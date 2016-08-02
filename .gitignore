@@ -1,0 +1,4 @@
+._*
+.~lock.*
+vendor
+/composer.lock

@@ -1,0 +1,36 @@
+{
+  "name" : "los/api-server",
+  "description" : "PHP api server middleware",
+  "require" : {
+    "php" : "^7.0",
+    "psr/http-message" : "~1.0",
+    "container-interop/container-interop" : "~1.1",
+    "los/api-problem": "^0.9.0",
+    "nocarrier/hal": "^0.9.12",
+    "zendframework/zend-inputfilter": "^2.7",
+    "zendframework/zend-paginator": "^2.7"
+  },
+  "require-dev" : {
+    "phpunit/phpunit" : "^5.0"
+  },
+  "license" : "MIT",
+  "autoload-dev" : {
+    "psr-4" : {
+      "LosMiddleware\\ApiServerTest\\" : "test/"
+    }
+  },
+  "autoload" : {
+    "psr-4" : {
+      "LosMiddleware\\ApiServer\\" : "src/"
+    }
+  },
+  "type" : "library",
+  "scripts" : {
+    "test" : [ "php vendor/squizlabs/php_codesniffer/scripts/phpcs", "php vendor/phpunit/phpunit/phpunit" ]
+  },
+  "homepage" : "https://github.com/lansoweb/api-server",
+  "authors" : [ {
+    "name" : "Leandro Silva",
+    "homepage" : "http://leandrosilva.info/"
+  } ]
+}
