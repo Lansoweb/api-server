@@ -96,6 +96,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
 
         $data = json_decode($request->getBody(), true);
+        if (empty($data)) {
+            $data = [];
+        }
         if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid($data)) {
             return new ApiProblem(
                 422,
@@ -172,7 +175,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
         }
 
-        $hal = new Hal($this->request->getUri()->__toString(), $list->getArrayCopy());
+        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
 
         return new JsonResponse(json_decode($hal->asJson(),true), 201);
     }
@@ -190,7 +193,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
         }
 
-        $hal = new Hal($this->request->getUri()->__toString(), $list->getArrayCopy());
+        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
 
         return new JsonResponse(json_decode($hal->asJson(),true), 200);
     }
@@ -240,7 +243,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
         }
 
-        $hal = new Hal($this->request->getUri()->__toString(), $list->getArrayCopy());
+        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
 
         return new JsonResponse(json_decode($hal->asJson(),true), 200);
     }
