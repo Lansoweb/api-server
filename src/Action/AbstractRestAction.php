@@ -48,8 +48,8 @@ abstract class AbstractRestAction implements MiddlewareInterface
         switch ($requestMethod) {
             case 'GET':
                 $return = isset($id)
-                    ? $this->handleGet($id)
-                    : $this->handleGetList();
+                    ? $this->handleFetch($id)
+                    : $this->handleFetchAll();
                 break;
             case 'POST':
                 $return = isset($id)
@@ -124,10 +124,10 @@ abstract class AbstractRestAction implements MiddlewareInterface
      * @param mixed $id
      * @return \LosMiddleware\ApiProblem\Model\ApiProblem|\Zend\Diactoros\Response\JsonResponse
      */
-    protected function handleGet($id)
+    protected function handleFetch($id)
     {
         try {
-            $entity = $this->get($id);
+            $entity = $this->fetch($id);
         } catch (\Exception $ex) {
             return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
         }
@@ -137,10 +137,10 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return new JsonResponse(json_decode($hal->asJson(),true));
     }
 
-    protected function handleGetList()
+    protected function handleFetchAll()
     {
         try {
-            $list = $this->getList();
+            $list = $this->fetchAll();
         } catch (\Exception $ex) {
             return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
         }
@@ -302,12 +302,12 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return new JsonResponse(null, 204);
     }
 
-    public function get($id) : Entity
+    public function fetch($id) : Entity
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
-    public function getList() : Collection
+    public function fetchAll() : Collection
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
