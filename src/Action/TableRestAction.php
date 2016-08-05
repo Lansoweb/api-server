@@ -90,7 +90,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
         $query = $this->request->getQueryParams();
         $fields = $query['fields'] ?? [];
         if (!empty($fields)) {
-            $this->table->getResultSetPrototype()->getObjectPrototype()->filterFieldsBy(explode(',', $fields));
+            $this->table->getResultSetPrototype()->getObjectPrototype()->setFields(explode(',', $fields));
         }
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
