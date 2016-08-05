@@ -9,6 +9,7 @@ namespace LosMiddleware\ApiServer\Helper;
 
 use Zend\Expressive\Helper\UrlHelper as ZendUrlHelper;
 use Zend\Expressive\Router\Exception\RuntimeException as RouterException;
+use Zend\Expressive\Router\RouteResult;
 
 class UrlHelper extends ZendUrlHelper
 {
