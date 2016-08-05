@@ -7,11 +7,8 @@
 
 namespace LosMiddleware\ApiServer\Helper;
 
-use InvalidArgumentException;
-use Zend\Expressive\Router\Exception\RuntimeException as RouterException;
-use Zend\Expressive\Router\RouteResult;
-use Zend\Expressive\Router\RouterInterface;
 use Zend\Expressive\Helper\UrlHelper as ZendUrlHelper;
+use Zend\Expressive\Router\Exception\RuntimeException as RouterException;
 
 class UrlHelper extends ZendUrlHelper
 {
@@ -39,17 +36,40 @@ class UrlHelper extends ZendUrlHelper
         $basePath = $this->getBasePath();
 
         if ($route === null) {
-            if ($basePath === '/') {
-                return $this->router->generateUri($name, $params);
-            }
-            return ($basePath !== '/' ? $basePath : '') . $this->generateUriFromResult($params, $result);
+            return ($basePath !== '/' ? $basePath : '') . $this->generateUriFromResult2($params, $result);
         }
 
         if ($this->result) {
-            $params = $this->mergeParams($route, $result, $params);
+            $params = $this->mergeParams2($route, $result, $params);
         }
 
         return ($basePath !== '/' ? $basePath : '') . $this->router->generateUri($route, $params);
+    }
+
+    private function generateUriFromResult2(array $params, RouteResult $result)
+    {
+        if ($result->isFailure()) {
+            throw new Exception\RuntimeException(
+                'Attempting to use matched result when routing failed; aborting'
+                );
+        }
+
+        $name   = $result->getMatchedRouteName();
+        $params = array_merge($result->getMatchedParams(), $params);
+        return $this->router->generateUri($name, $params);
+    }
+
+    private function mergeParams2($route, RouteResult $result, array $params)
+    {
+        if ($result->isFailure()) {
+            return $params;
+        }
+
+        if ($result->getMatchedRouteName() !== $route) {
+            return $params;
+        }
+
+        return array_merge($result->getMatchedParams(), $params);
     }
 
 }
