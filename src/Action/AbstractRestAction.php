@@ -2,15 +2,17 @@
 namespace LosMiddleware\ApiServer\Action;
 
 use LosMiddleware\ApiProblem\Model\ApiProblem;
+use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Exception\MethodNotAllowedException;
+use LosMiddleware\ApiServer\Exception\ValidationException;
 use Nocarrier\Hal;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Zend\Diactoros\Response\JsonResponse;
+use Zend\Expressive\Router\RouterInterface;
 use Zend\InputFilter\InputFilterAwareInterface;
 use Zend\Stratigility\MiddlewareInterface;
-use LosMiddleware\ApiServer\Entity\Collection;
 
 abstract class AbstractRestAction implements MiddlewareInterface
 {
@@ -24,6 +26,11 @@ abstract class AbstractRestAction implements MiddlewareInterface
     protected $parsedData;
 
     protected $request;
+
+    /**
+     * @var RouterInterface
+     */
+    protected $router;
 
     /**
      * Method to return the resource name for collections generation
@@ -47,66 +54,63 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
         switch ($requestMethod) {
             case 'GET':
-                $return = isset($id)
+                return isset($id)
                     ? $this->handleFetch($id)
                     : $this->handleFetchAll();
                 break;
             case 'POST':
-                $return = isset($id)
-                    ? new ApiProblem(405, 'Invalid entity operation POST')
-                    : $this->handlePost();
+                if (isset($id)) {
+                    throw new MethodNotAllowedException('Invalid entity operation POST', 405);
+                }
+                return $this->handlePost();
                 break;
             case 'PUT':
-                $return = isset($id)
+                return isset($id)
                     ? $this->handleUpdate($id)
                     : $this->handleUpdateList();
                 break;
             case 'PATCH':
-                $return = isset($id)
+                return isset($id)
                     ? $this->handlePatch($id)
                     : $this->handlePatchList();
                 break;
             case 'DELETE':
-                $return = isset($id)
+                return isset($id)
                     ? $this->handleDelete($id)
                     : $this->handleDeleteList();
                 break;
             case 'HEAD':
-                $return = $this->head();
+                return $this->head();
                 break;
             case 'OPTIONS':
-                $return = $this->options();
+                return $this->options();
                 break;
             default:
-                $return = $next($request, $response);
+                return $next($request, $response);
                 break;
         }
-
-        if ($return instanceof ApiProblem) {
-            return new JsonResponse($return->toArray(), $return->status);
-        }
-
-        return $return;
     }
 
-    protected function parseBody(Request $request)
+    protected function parseBody(Request $request) : array
     {
-        if ($this->entityPrototype == null || !($this->entityPrototype instanceof InputFilterAwareInterface)) {
-            return;
-        }
-
         $data = json_decode($request->getBody(), true);
-        if (empty($data)) {
+
+        if (!is_array($data)) {
             $data = [];
         }
-        if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid($data)) {
-            return new ApiProblem(
-                422,
-                [],
-                null,
-                null,
-                ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]);
+
+        if ($this->entityPrototype == null || !($this->entityPrototype instanceof InputFilterAwareInterface)) {
+            return $data;
         }
+
+        if (strtoupper($request->getMethod()) == 'PATCH') {
+            $this->entityPrototype->getInputFilter()->setValidationGroup(array_keys($data));
+        }
+
+        if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid()) {
+            throw new ValidationException(json_encode(['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]), 422);
+        }
+
         $values = $this->entityPrototype->getInputFilter()->getValues();
 
         $parsed = [];
@@ -118,6 +122,53 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $parsed;
     }
 
+    protected function generateUrl($id = null) : string
+    {
+        $route = $this->router->match($this->request)->getMatchedRouteName();
+        if (!$route) {
+            return (string)$this->request->getUri();
+        }
+        if ($id !== null) {
+            $path = $this->router->generateUri($route, [static::IDENTIFIER_NAME => $id]);
+        } else {
+            $path = $this->router->generateUri($route);
+        }
+        return (string)$this->request->getUri()->withPath($path);
+    }
+
+    protected function generateResponse($entity, $code = 200)
+    {
+        //Just an entity
+        if ($entity instanceof Entity) {
+            $entityArray = $entity->getArrayCopy();
+            $hal = new Hal($this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null), $entityArray);
+
+            return new JsonResponse(json_decode($hal->asJson(),true), $code);
+        }
+
+        if (!($entity instanceof Collection)) {
+            throw new \InvalidArgumentException('Method result must be either an Entity or Collection');
+        }
+
+        //Collections
+        $hal = new Hal($this->generateUrl());
+
+        $entities = $entity->getCurrentItems();
+        foreach ($entities as $tok) {
+            $entityArray = $tok->getArrayCopy();
+            $halEntity = new Hal($this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null), $entityArray);
+            $hal->addResource($this->getResourceName(), $halEntity);
+        }
+        $hal->setData([
+            'page_count' => ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1)),
+            'page_size' => 25,
+            'total_items' => $entity->getTotalItemCount(),
+            'page' => 1,
+        ]);
+
+        return new JsonResponse(json_decode($hal->asJson()), $code);
+    }
+
     /**
      * Gets one entity and creates a Hal response
      *
@@ -126,179 +177,65 @@ abstract class AbstractRestAction implements MiddlewareInterface
      */
     protected function handleFetch($id)
     {
-        try {
-            $entity = $this->fetch($id);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-
-        return new JsonResponse(json_decode($hal->asJson(),true));
+        $entity = $this->fetch($id);
+        return $this->generateResponse($entity);
     }
 
     protected function handleFetchAll()
     {
-        try {
-            $list = $this->fetchAll();
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString());
-
-        $entities = $list->getCurrentItems();
-        foreach ($entities as $entity) {
-            $halEntity = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-            $hal->addResource($this->getResourceName(), $halEntity);
-        }
-        $hal->setData([
-            'page_count' => ceil(max($list->getTotalItemCount() / $list->getItemCountPerPage(), 1)),
-            'page_size' => 25,
-            'total_items' => $list->getTotalItemCount(),
-            'page' => 1,
-        ]);
-
-        return new JsonResponse(json_decode($hal->asJson()));
+        $list = $this->fetchAll();
+        return $this->generateResponse($list);
     }
 
     protected function handlePost()
     {
         $data = $this->parseBody($this->request);
-        if ($data instanceof ApiProblem) {
-            return $data;
-        }
+        $entity = $this->create($data);
 
-        try {
-            $entity = $this->create($data);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-
-        return new JsonResponse(json_decode($hal->asJson(),true), 201);
+        return $this->generateResponse($entity, 201);
     }
 
     protected function handleUpdate($id)
     {
         $data = $this->parseBody($this->request);
-        if ($data instanceof ApiProblem) {
-            return $data;
-        }
+        $entity = $this->update($id, $data);
 
-        try {
-            $entity = $this->update($id, $data);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-
-        return new JsonResponse(json_decode($hal->asJson(),true), 200);
+        return $this->generateResponse($entity);
     }
 
     protected function handleUpdateList()
     {
         $data = $this->parseBody($this->request);
-        if ($data instanceof ApiProblem) {
-            return $data;
-        }
+        $list = $this->updateList($data);
 
-        try {
-            $list = $this->updateList($data);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString());
-
-        $entities = $list->getCurrentItems();
-        foreach ($entities as $entity) {
-            $halEntity = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-            $hal->addResource($this->getResourceName(), $halEntity);
-        }
-        $hal->setData([
-            'page_count' => ceil(max($list->getTotalItemCount() / $list->getItemCountPerPage(), 1)),
-            'page_size' => 25,
-            'total_items' => $list->getTotalItemCount(),
-            'page' => 1,
-        ]);
-
-        return new JsonResponse(json_decode($hal->asJson()));
+        return $this->generateResponse($list);
     }
 
     protected function handlePatch($id)
     {
-        //TODO: validade only submitted fields
-        //$data = $this->parseBody($this->request);
-        $data = json_decode($this->request->getBody(), true);
-        if ($data instanceof ApiProblem) {
-            return $data;
-        }
+        $data = $this->parseBody($this->request);
+        $entity = $this->patch($id, $data);
 
-        try {
-            $entity = $this->patch($id, $data);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-
-        return new JsonResponse(json_decode($hal->asJson(),true), 200);
+        return $this->generateResponse($entity);
     }
 
     protected function handlePatchList()
     {
-        //TODO: validade only submitted fields
-        //$data = $this->parseBody($this->request);
-        $data = json_decode($this->request->getBody(), true);
-        if ($data instanceof ApiProblem) {
-            return $data;
-        }
+        $data = $this->parseBody($this->request);
+        $list = $this->patchList($data);
 
-        try {
-            $list = $this->patchList($data);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
-        $hal = new Hal($this->request->getUri()->__toString());
-
-        $entities = $list->getCurrentItems();
-        foreach ($entities as $entity) {
-            $halEntity = new Hal($this->request->getUri()->__toString(), $entity->getArrayCopy());
-            $hal->addResource($this->getResourceName(), $halEntity);
-        }
-        $hal->setData([
-            'page_count' => ceil(max($list->getTotalItemCount() / $list->getItemCountPerPage(), 1)),
-            'page_size' => 25,
-            'total_items' => $list->getTotalItemCount(),
-            'page' => 1,
-        ]);
-
-        return new JsonResponse(json_decode($hal->asJson()));
+        return $this->generateResponse($list);
     }
 
     protected function handleDelete($id)
     {
-        try {
-            $this->delete($id);
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
+        $this->delete($id);
         return new JsonResponse(null, 204);
     }
 
     protected function handleDeleteList()
     {
-        try {
-            $this->deleteList();
-        } catch (\Exception $ex) {
-            return new ApiProblem($ex->getCode() ?? 500, $ex->getMessage());
-        }
-
+        $this->deleteList();
         return new JsonResponse(null, 204);
     }
 
