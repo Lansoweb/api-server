@@ -114,7 +114,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
             throw new \Exception('Entity not found', 404);
         }
 
-        $this->getEventManager()->trigger(__FUNCTION__, $this, $id);
+        $this->getEventManager()->trigger(__FUNCTION__, $this, [static::IDENTIFIER_NAME => $id]);
 
         $this->table->delete(['id' => $id]);
     }
