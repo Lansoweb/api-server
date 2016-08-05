@@ -28,9 +28,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
     protected $request;
 
     /**
-     * @var RouterInterface
+     * @var \Zend\Expressive\Helper\UrlHelper
      */
-    protected $router;
+    protected $urlHelper;
 
     /**
      * Method to return the resource name for collections generation
@@ -124,14 +124,14 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function generateUrl($id = null) : string
     {
-        $route = $this->router->match($this->request)->getMatchedRouteName();
-        if (!$route) {
+        if (!$this->urlHelper) {
             return (string)$this->request->getUri();
         }
+
         if ($id !== null) {
-            $path = $this->router->generateUri($route, [static::IDENTIFIER_NAME => $id]);
+            $path = $this->urlHelper($route, [static::IDENTIFIER_NAME => $id]);
         } else {
-            $path = $this->router->generateUri($route);
+            $path = $this->urlHelper($route);
         }
         return (string)$this->request->getUri()->withPath($path);
     }
