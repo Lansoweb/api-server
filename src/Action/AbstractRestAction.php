@@ -32,6 +32,8 @@ abstract class AbstractRestAction implements MiddlewareInterface
      */
     protected $urlHelper;
 
+    protected $itemCountPerPage = 25;
+
     /**
      * Method to return the resource name for collections generation
      *
@@ -91,9 +93,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
     }
 
-    protected function parseBody(Request $request) : array
+    protected function validateBody() : array
     {
-        $data = json_decode($request->getBody(), true);
+        $data = $this->request->getParsedBody();
 
         if (!is_array($data)) {
             $data = [];
@@ -103,12 +105,17 @@ abstract class AbstractRestAction implements MiddlewareInterface
             return $data;
         }
 
-        if (strtoupper($request->getMethod()) == 'PATCH') {
+        if (strtoupper($this->request->getMethod()) == 'PATCH') {
             $this->entityPrototype->getInputFilter()->setValidationGroup(array_keys($data));
         }
 
         if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid()) {
-            throw new ValidationException('Unprocessable Entity', 422, null, ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]);
+            throw new ValidationException(
+                'Unprocessable Entity',
+                422,
+                null,
+                ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]
+            );
         }
 
         $values = $this->entityPrototype->getInputFilter()->getValues();
@@ -189,7 +196,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function handlePost()
     {
-        $data = $this->parseBody($this->request);
+        $data = $this->validateBody();
         $entity = $this->create($data);
 
         return $this->generateResponse($entity, 201);
@@ -197,7 +204,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function handleUpdate($id)
     {
-        $data = $this->parseBody($this->request);
+        $data = $this->validateBody();
         $entity = $this->update($id, $data);
 
         return $this->generateResponse($entity);
@@ -205,7 +212,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function handleUpdateList()
     {
-        $data = $this->parseBody($this->request);
+        $data = $this->validateBody();
         $list = $this->updateList($data);
 
         return $this->generateResponse($list);
@@ -213,7 +220,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function handlePatch($id)
     {
-        $data = $this->parseBody($this->request);
+        $data = $this->validateBody();
         $entity = $this->patch($id, $data);
 
         return $this->generateResponse($entity);
@@ -221,7 +228,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
     protected function handlePatchList()
     {
-        $data = $this->parseBody($this->request);
+        $data = $this->validateBody();
         $list = $this->patchList($data);
 
         return $this->generateResponse($list);
