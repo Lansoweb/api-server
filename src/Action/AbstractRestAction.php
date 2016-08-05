@@ -108,7 +108,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
 
         if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid()) {
-            throw new ValidationException(null, 422, null, ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]);
+            throw new ValidationException('Unprocessable Entity', 422, null, ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]);
         }
 
         $values = $this->entityPrototype->getInputFilter()->getValues();
