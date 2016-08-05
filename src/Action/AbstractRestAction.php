@@ -129,9 +129,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
 
         if ($id !== null) {
-            $path = $this->urlHelper($route, [static::IDENTIFIER_NAME => $id]);
+            $path = $this->urlHelper->__invoke($route, [static::IDENTIFIER_NAME => $id]);
         } else {
-            $path = $this->urlHelper($route);
+            $path = $this->urlHelper->__invoke($route);
         }
         return (string)$this->request->getUri()->withPath($path);
     }
