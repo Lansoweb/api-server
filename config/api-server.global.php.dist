@@ -1,0 +1,26 @@
+<?php
+use Zend\Expressive\Helper;
+use LosMiddleware\ApiServer\Helper\UrlHelperFactory;
+
+return [
+    'dependencies' => [
+        'invokables' => [
+            Helper\ServerUrlHelper::class => Helper\ServerUrlHelper::class,
+            LosMiddleware\ApiProblem\ApiProblem::class => LosMiddleware\ApiProblem\ApiProblem::class,
+            Helper\BodyParams\BodyParamsMiddleware::class => Helper\BodyParams\BodyParamsMiddleware::class,
+        ],
+        'factories' => [
+            Helper\UrlHelper::class => UrlHelperFactory::class,
+            Zend\Expressive\FinalHandler::class => LosMiddleware\ApiProblem\ApiProblemHandlerFactory::class,
+        ],
+    ],
+    'middleware_pipeline' => [
+        'always' => [
+            'middleware' => [
+                Helper\ServerUrlMiddleware::class,
+                Helper\BodyParams\BodyParamsMiddleware::class,
+            ],
+            'priority' => 10000,
+        ],
+    ],
+];
