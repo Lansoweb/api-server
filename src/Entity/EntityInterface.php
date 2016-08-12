@@ -1,5 +1,5 @@
 <?php
-namespace Entity;
+namespace LosMiddleware\ApiServer\Entity;
 
 use Zend\InputFilter\InputFilterAwareInterface;
 use Zend\Stdlib\ArraySerializableInterface;
