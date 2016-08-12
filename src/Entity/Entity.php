@@ -1,7 +1,6 @@
 <?php
 namespace LosMiddleware\ApiServer\Entity;
 
-use Entity\EntityInterface;
 use Zend\Filter\Word\CamelCaseToUnderscore;
 use Zend\Filter\Word\UnderscoreToStudlyCase;
 use Zend\InputFilter\InputFilterAwareTrait;
