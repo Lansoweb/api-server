@@ -1,18 +1,22 @@
 <?php
 namespace LosMiddleware\ApiServer\Entity;
 
-use Zend\InputFilter\InputFilterAwareInterface;
-use Zend\InputFilter\InputFilterAwareTrait;
-use Zend\Stdlib\ArraySerializableInterface;
-use Zend\Filter\Word\UnderscoreToStudlyCase;
+use Entity\EntityInterface;
 use Zend\Filter\Word\CamelCaseToUnderscore;
+use Zend\Filter\Word\UnderscoreToStudlyCase;
+use Zend\InputFilter\InputFilterAwareTrait;
 
-class Entity implements ArraySerializableInterface, InputFilterAwareInterface
+class Entity implements EntityInterface
 {
     use InputFilterAwareTrait;
 
     protected $fields = [];
 
+    /**
+     * Exchange internal values from provided array.
+     * Call a setter. If not available, try the property.
+     * @see \Zend\Stdlib\ArraySerializableInterface::exchangeArray()
+     */
     public function exchangeArray(array $data)
     {
         $filter = new UnderscoreToStudlyCase();
@@ -28,6 +32,10 @@ class Entity implements ArraySerializableInterface, InputFilterAwareInterface
         }
     }
 
+    /**
+     * Return an array representation of the object
+     * @see \Zend\Stdlib\ArraySerializableInterface::getArrayCopy()
+     */
     public function getArrayCopy() : array
     {
 
@@ -42,7 +50,11 @@ class Entity implements ArraySerializableInterface, InputFilterAwareInterface
 
         $list = [];
         foreach ($this->fields as $field) {
-            $fieldName = extension_loaded('mbstring') ? mb_strtolower($filter($field)) : strtolower($filter($field));
+
+            $fieldName = extension_loaded('mbstring')
+                ? mb_strtolower($filter($field))
+                : strtolower($filter($field));
+
             $method = 'get'.$field;
             if (method_exists($this, $method)) {
                 $list[$fieldName] = $this->$method();
@@ -54,17 +66,32 @@ class Entity implements ArraySerializableInterface, InputFilterAwareInterface
         return $list;
     }
 
-    public function filterData($data) : array
+    /**
+     * Returns the $data filtered by existant properties only.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function filterData(array $data) : array
     {
         $this->exchangeArray($data);
         return $this->getArrayCopy();
     }
 
+    /**
+     * Define which fields will be returned by getArrayCopy
+     * @param array $fields
+     */
     public function setFields(array $fields)
     {
-        $this->fields = array_merge(['id'], $fields);
+        //$this->fields = array_merge(['id'], $fields);
+        $this->fields = $fields;
     }
 
+    /**
+     * {@inheritDoc}
+     * @see \Entity\EntityInterface::prepareDataForSql()
+     */
     public function prepareDataForSql(array $data) : array
     {
         return $data;

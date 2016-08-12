@@ -10,7 +10,6 @@ use Nocarrier\Hal;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Zend\Diactoros\Response\JsonResponse;
-use Zend\Expressive\Router\RouterInterface;
 use Zend\InputFilter\InputFilterAwareInterface;
 use Zend\Stratigility\MiddlewareInterface;
 
@@ -19,7 +18,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
     const IDENTIFIER_NAME = 'id';
 
     /**
-     * @var AbstractEntity
+     * @var Entity
      */
     protected $entityPrototype;
 
@@ -93,6 +92,12 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
     }
 
+    /**
+     * Call the inputfilter to filter and validate data
+     *
+     * @throws ValidationException
+     * @return array
+     */
     protected function validateBody() : array
     {
         $data = $this->request->getParsedBody();
@@ -129,6 +134,12 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $parsed;
     }
 
+    /**
+     * Generates an url for the entity or collection
+     *
+     * @param mixed $id
+     * @return string
+     */
     protected function generateUrl($id = null) : string
     {
         if (!$this->urlHelper) {
@@ -143,6 +154,14 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return (string)$this->request->getUri()->withPath($path);
     }
 
+    /**
+     * Generates a proper response based on the Entity ot Collection
+     *
+     * @param Entity|Collection $entity
+     * @param int $code
+     * @throws \InvalidArgumentException
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function generateResponse($entity, $code = 200)
     {
         //Just an entity
@@ -177,7 +196,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
     }
 
     /**
-     * Gets one entity and creates a Hal response
+     * Fetch an Entity
      *
      * @param mixed $id
      * @return \LosMiddleware\ApiProblem\Model\ApiProblem|\Zend\Diactoros\Response\JsonResponse
@@ -188,12 +207,22 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($entity);
     }
 
+    /**
+     * Fetch a collection
+     *
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handleFetchAll()
     {
         $list = $this->fetchAll();
         return $this->generateResponse($list);
     }
 
+    /**
+     * Create a new Entity
+     *
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handlePost()
     {
         $data = $this->validateBody();
@@ -202,6 +231,12 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($entity, 201);
     }
 
+    /**
+     * Update an Entity
+     *
+     * @param mixed $id
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handleUpdate($id)
     {
         $data = $this->validateBody();
@@ -210,6 +245,11 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($entity);
     }
 
+    /**
+     * Update a collection
+     *
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handleUpdateList()
     {
         $data = $this->validateBody();
@@ -218,6 +258,12 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($list);
     }
 
+    /**
+     * Update some properties from an Entity
+     *
+     * @param mixed $id
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handlePatch($id)
     {
         $data = $this->validateBody();
@@ -226,6 +272,11 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($entity);
     }
 
+    /**
+     * Updates some properties from a Collection
+     *
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handlePatchList()
     {
         $data = $this->validateBody();
@@ -234,12 +285,23 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return $this->generateResponse($list);
     }
 
+    /**
+     * Delete an Entity
+     *
+     * @param mixed $id
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handleDelete($id)
     {
         $this->delete($id);
         return new JsonResponse(null, 204);
     }
 
+    /**
+     * Delete a Collection
+
+     * @return \Zend\Diactoros\Response\JsonResponse
+     */
     protected function handleDeleteList()
     {
         $this->deleteList();
