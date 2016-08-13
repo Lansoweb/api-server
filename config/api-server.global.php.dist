@@ -12,6 +12,7 @@ return [
         'factories' => [
             Helper\UrlHelper::class => UrlHelperFactory::class,
             Zend\Expressive\FinalHandler::class => LosMiddleware\ApiProblem\ApiProblemHandlerFactory::class,
+            LosMiddleware\ApiServer\Auth\Auth::class => LosMiddleware\ApiServer\Auth\AuthFactory::class,
         ],
     ],
     'middleware_pipeline' => [
@@ -19,8 +20,16 @@ return [
             'middleware' => [
                 Helper\ServerUrlMiddleware::class,
                 Helper\BodyParams\BodyParamsMiddleware::class,
+                //LosMiddleware\ApiServer\Auth\Auth::class,
             ],
             'priority' => 10000,
+        ],
+    ],
+    'api_server' => [
+        'auth' => [
+            'clients' => [
+                //'user' => 'hashed password',
+            ],
         ],
     ],
 ];

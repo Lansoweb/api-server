@@ -22,7 +22,6 @@ class RestActionFactory implements AbstractFactoryInterface
     {
         $entityName = strtolower(str_replace('Action', '', end(explode('\\', $requestedName))));
         $entityClass = str_replace('Action', 'Entity', $requestedName);
-        $entity = new $entityClass;
 
         $config = $container->get('config');
         $adapter = new Adapter($config['db']);
@@ -30,9 +29,9 @@ class RestActionFactory implements AbstractFactoryInterface
             $config['tables'][$entityName] ?? $entityName,
             $adapter,
             null,
-            new HydratingResultSet(new ArraySerializable(), $entity));
+            new HydratingResultSet(new ArraySerializable(), new $entityClass));
         $urlHelper = $container->get(UrlHelper::class);
 
-        return new $requestedName($table, $entity, $urlHelper);
+        return new $requestedName($table, new $entityClass, $urlHelper);
     }
 }
