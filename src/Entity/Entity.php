@@ -9,6 +9,8 @@ class Entity implements EntityInterface
 {
     use InputFilterAwareTrait;
 
+    const IDENTIFIER_NAME = 'id';
+
     protected $fields = [];
 
     /**
@@ -54,7 +56,7 @@ class Entity implements EntityInterface
                 ? mb_strtolower($filter($field))
                 : strtolower($filter($field));
 
-            $method = 'get'.$field;
+            $method = 'get'.ucfirst($field);
             if (method_exists($this, $method)) {
                 $list[$fieldName] = $this->$method();
             } elseif (property_exists($this, $field)) {
@@ -83,8 +85,7 @@ class Entity implements EntityInterface
      */
     public function setFields(array $fields)
     {
-        //$this->fields = array_merge(['id'], $fields);
-        $this->fields = $fields;
+        $this->fields = array_merge([static::IDENTIFIER_NAME], $fields);
     }
 
     /**
