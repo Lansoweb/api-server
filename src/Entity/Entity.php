@@ -46,19 +46,22 @@ class Entity implements EntityInterface
             unset($fields['fields']);
             $this->fields = array_keys($fields);
         }
-
         $filter = new CamelCaseToUnderscore();
+        $filterStudly = new UnderscoreToStudlyCase();
 
         $list = [];
         foreach ($this->fields as $field) {
 
+            $property = $filterStudly($field);
             $fieldName = extension_loaded('mbstring')
                 ? mb_strtolower($filter($field))
                 : strtolower($filter($field));
 
-            $method = 'get'.ucfirst($field);
+            $method = 'get'.ucfirst($property);
             if (method_exists($this, $method)) {
                 $list[$fieldName] = $this->$method();
+            } elseif (property_exists($this, $property)) {
+                $list[$fieldName] = $this->$property;
             } elseif (property_exists($this, $field)) {
                 $list[$fieldName] = $this->$field;
             }
