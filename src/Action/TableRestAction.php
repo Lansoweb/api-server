@@ -27,6 +27,15 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
     /**
      * {@inheritDoc}
+     * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::getResourceName()
+     */
+    public function getResourceName(): string
+    {
+        return strtolower(str_replace('Action', '', end(explode('\\', get_class($this)))));
+    }
+
+    /**
+     * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::create()
      */
     public function create(array $data): Entity
