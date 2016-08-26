@@ -38,7 +38,10 @@ abstract class AbstractRestAction implements MiddlewareInterface
      *
      * @return string
      */
-    abstract public function getResourceName() : string;
+    public function getResourceName() : string
+    {
+        return strtolower(str_replace('Action', '', end(explode('\\', $this))));
+    }
 
     /**
      * @param Request $request
@@ -148,10 +151,48 @@ abstract class AbstractRestAction implements MiddlewareInterface
 
         if ($id !== null) {
             $path = $this->urlHelper->__invoke($route, [static::IDENTIFIER_NAME => $id]);
-        } else {
-            $path = $this->urlHelper->__invoke($route);
+            parse_str($this->request->getUri()->getQuery(), $query);
+            unset($query['page']);
+            unset($query['sort']);
+            unset($query['order']);
+            return (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($query));
         }
+
+        $path = $this->urlHelper->__invoke($route);
         return (string)$this->request->getUri()->withPath($path);
+    }
+
+    protected function addPaginatorLinks($entity, $hal)
+    {
+        $maxPages = ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1));
+
+        $path = $this->urlHelper->__invoke();
+        parse_str($this->request->getUri()->getQuery(), $query);
+        $query['page'] = $query['page'] ?? 1;
+
+        $first = $query;
+        if (isset($first['page']) && $first['page'] > 1) {
+            unset($first['page']);
+            $hal->addLink('first', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($first)));
+            $prev = $query;
+            $prev['page'] = $prev['page'] - 1;
+            if ($prev['page'] == 0) {
+                unset($prev['page']);
+            }
+            $hal->addLink('previous', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($prev)));
+        }
+
+        $next = $query;
+        if (isset($next['page']) && $next['page'] + 1 < $maxPages) {
+            $next['page'] = $next['page'] + 1;
+            $hal->addLink('next', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($next)));
+        }
+
+        if ($maxPages > 1) {
+            $last = $query;
+            $last['page'] = $maxPages;
+            $hal->addLink('last', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($last)));
+        }
     }
 
     /**
@@ -179,6 +220,8 @@ abstract class AbstractRestAction implements MiddlewareInterface
         //Collections
         $hal = new Hal($this->generateUrl());
 
+        $this->addPaginatorLinks($entity, $hal);
+
         $entities = $entity->getCurrentItems();
         foreach ($entities as $tok) {
             $entityArray = $tok->getArrayCopy();
@@ -189,7 +232,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             'page_count' => ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1)),
             'page_size' => 25,
             'total_items' => $entity->getTotalItemCount(),
-            'page' => 1,
+            'page' => $entity->getCurrentPageNumber(),
         ]);
 
         return new JsonResponse(json_decode($hal->asJson()), $code);
