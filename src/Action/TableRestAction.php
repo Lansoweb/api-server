@@ -16,6 +16,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 {
     use EventManagerAwareTrait;
 
+    const SORT_BY = self::IDENTIFIER_NAME;
+
     protected $table;
 
     public function __construct(TableGateway $table, $entityPrototype, UrlHelper $urlHelper)
@@ -94,7 +96,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
         if (isset($params['sort']) && in_array($params['sort'], array_keys($this->entityPrototype->getArrayCopy()))) {
             $sort = [$params['sort'] => isset($params['order']) ? $params['order'] : 'ASC'];
         } else {
-            $sort = ['name' => 'ASC'];
+            $sort = [static::SORT_BY => 'ASC'];
         }
         $query = $this->request->getQueryParams();
         $fields = $query['fields'] ?? [];
@@ -107,7 +109,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
         $dbAdapter = new DbTableGateway($this->table, $where, $sort);
         $collection = new Collection($dbAdapter);
         $collection->setItemCountPerPage($this->itemCountPerPage);
-        $collection->setCurrentPageNumber(1);
+        $collection->setCurrentPageNumber($params['page'] ?? 1);
 
         return $collection;
     }
