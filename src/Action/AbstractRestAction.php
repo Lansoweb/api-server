@@ -150,7 +150,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
 
         if ($id !== null) {
-            $path = $this->urlHelper->__invoke($route, [static::IDENTIFIER_NAME => $id]);
+            $path = $this->urlHelper->__invoke(null, [static::IDENTIFIER_NAME => $id]);
             parse_str($this->request->getUri()->getQuery(), $query);
             unset($query['page']);
             unset($query['sort']);
@@ -158,7 +158,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             return (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($query));
         }
 
-        $path = $this->urlHelper->__invoke($route);
+        $path = $this->urlHelper->__invoke();
         return (string)$this->request->getUri()->withPath($path);
     }
 
