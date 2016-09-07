@@ -40,7 +40,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
      */
     public function getResourceName() : string
     {
-        return strtolower(str_replace('Action', '', end(explode('\\', $this))));
+        return strtolower(str_replace('Action', '', end(explode('\\', get_class($this)))));
     }
 
     /**
