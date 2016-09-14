@@ -95,8 +95,11 @@ class Entity implements EntityInterface
      * {@inheritDoc}
      * @see \Entity\EntityInterface::prepareDataForSql()
      */
-    public function prepareDataForSql(array $data) : array
+    public function prepareDataForSql(array $data = []) : array
     {
+        if (empty($data)) {
+            $data = $this->getArrayCopy();
+        }
         return $data;
     }
 
