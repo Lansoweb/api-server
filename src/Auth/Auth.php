@@ -52,7 +52,7 @@ class Auth implements MiddlewareInterface
             throw new AuthorizationException('Invalid Authorization header during parse', 401);
         }
 
-        if (!array_key_exists($creds[0], $this->users))
+        if (!array_key_exists($creds[0], $this->users)) {
             throw new AuthorizationException('Authorization failed.', 401);
         }
 
