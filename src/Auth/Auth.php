@@ -52,8 +52,11 @@ class Auth implements MiddlewareInterface
             throw new AuthorizationException('Invalid Authorization header during parse', 401);
         }
 
-        if (!array_key_exists($creds[0], $this->users)
-            || !hash_equals($this->users[$creds[0]], $creds[1])) {
+        if (!array_key_exists($creds[0], $this->users))
+            throw new AuthorizationException('Authorization failed.', 401);
+        }
+
+        if ($this->users[$creds[0]] != $creds[1] && !hash_equals($this->users[$creds[0]], $creds[1])) {
             throw new AuthorizationException('Authorization failed.', 401);
         }
     }
