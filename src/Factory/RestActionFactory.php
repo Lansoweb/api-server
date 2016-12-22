@@ -20,7 +20,8 @@ class RestActionFactory implements AbstractFactoryInterface
 
     public function __invoke(ContainerInterface $container, $requestedName, array $options = null)
     {
-        $entityName = strtolower(str_replace('Action', '', end(explode('\\', $requestedName))));
+        $tokens = explode('\\', $requestedName);
+        $entityName = strtolower(str_replace('Action', '', end($tokens)));
         $entityClass = str_replace('Action', 'Entity', $requestedName);
 
         $config = $container->get('config');
