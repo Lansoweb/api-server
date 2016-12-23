@@ -7,6 +7,7 @@
 
 namespace LosMiddleware\ApiServer\Helper;
 
+use LosMiddleware\ApiServer\Exception\RuntimeException;
 use Zend\Expressive\Helper\UrlHelper as ZendUrlHelper;
 use Zend\Expressive\Router\Exception\RuntimeException as RouterException;
 use Zend\Expressive\Router\RouteResult;
@@ -39,7 +40,7 @@ class UrlHelper extends ZendUrlHelper
     {
         $result = $this->getRouteResult();
         if ($route === null && $result === null) {
-            throw new Exception\RuntimeException(
+            throw new RuntimeException(
                 'Attempting to use matched result when none was injected; aborting'
             );
         }
@@ -60,7 +61,7 @@ class UrlHelper extends ZendUrlHelper
     private function generateUriFromResult2(array $params, RouteResult $result)
     {
         if ($result->isFailure()) {
-            throw new Exception\RuntimeException(
+            throw new RuntimeException(
                 'Attempting to use matched result when routing failed; aborting'
                 );
         }

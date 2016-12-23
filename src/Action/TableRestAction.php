@@ -61,7 +61,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function fetch($id): Entity
     {
-        $where = [static::IDENTIFIER_NAME => $id];
+        $where = new Where();
+        $where->equalTo(static::IDENTIFIER_NAME, $id);
 
         $query = $this->request->getQueryParams();
 
