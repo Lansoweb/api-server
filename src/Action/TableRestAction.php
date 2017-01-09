@@ -33,7 +33,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function getResourceName(): string
     {
-        return strtolower(str_replace('Action', '', end(explode('\\', get_class($this)))));
+        $tokens = explode('\\', get_class($this));
+        return strtolower(str_replace('Action', '', end($tokens)));
     }
 
     /**
