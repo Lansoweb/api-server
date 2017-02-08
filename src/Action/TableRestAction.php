@@ -20,7 +20,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
     protected $table;
 
-    protected $limitItemsPorPage = 25;
+    protected $limitItemsPerPage = 25;
 
     public function __construct(TableGateway $table, $entityPrototype, UrlHelper $urlHelper)
     {
@@ -115,7 +115,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $itemCountPerPage = $this->itemCountPerPage;
         if (array_key_exists('items_per_page', $params) && is_numeric($params['items_per_page'])) {
-            $itemCountPerPage = min([$this->limitItemsPorPage, $params['items_per_page']]);
+            $itemCountPerPage = min([$this->limitItemsPerPage, $params['items_per_page']]);
         }
         $collection->setItemCountPerPage($itemCountPerPage);
         $collection->setCurrentPageNumber($params['page'] ?? 1);
