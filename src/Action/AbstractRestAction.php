@@ -230,7 +230,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
         }
         $hal->setData([
             'page_count' => ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1)),
-            'page_size' => 25,
+            'page_size' => $entity->getItemCountPerPage(),
             'total_items' => $entity->getTotalItemCount(),
             'page' => $entity->getCurrentPageNumber(),
         ]);
