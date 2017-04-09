@@ -129,14 +129,16 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function delete($id)
     {
-        $result = $this->table->select([static::IDENTIFIER_NAME => $id]);
+        $where = [static::IDENTIFIER_NAME => $id];
+
+        $result = $this->table->select($where);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
 
-        $this->getEventManager()->trigger(__FUNCTION__, $this, [static::IDENTIFIER_NAME => $id]);
+        $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $this->table->delete(['id' => $id]);
+        $this->table->delete($where);
     }
 
     /**
@@ -145,7 +147,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function patch($id, array $data): Entity
     {
-        $result = $this->table->select([static::IDENTIFIER_NAME => $id]);
+        $where = [static::IDENTIFIER_NAME => $id];
+        $result = $this->table->select($where);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -156,7 +159,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, ['id' => $id]);
+        $this->table->update($data, $where);
 
         return $entity;
     }
@@ -167,7 +170,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function update($id, array $data): Entity
     {
-        $result = $this->table->select([static::IDENTIFIER_NAME => $id]);
+        $where = [static::IDENTIFIER_NAME => $id];
+        $result = $this->table->select($where);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -178,7 +182,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, ['id' => $id]);
+        $this->table->update($data, $where);
 
         return $entity;
     }
