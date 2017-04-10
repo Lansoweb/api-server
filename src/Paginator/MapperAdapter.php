@@ -26,7 +26,7 @@ class MapperAdapter implements AdapterInterface
      */
     public function getItems($offset, $itemCountPerPage)
     {
-        $this->mapper->select($this->where, [
+        $this->mapper->findBy($this->where, [
             'order' => $this->order,
             'group' => $this->group,
             'offset' => $offset,

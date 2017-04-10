@@ -53,7 +53,7 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->mapper->insert($data);
+        $this->mapper->insert($data->getArrayCopy());
 
         return $entity;
     }
@@ -71,7 +71,7 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $resultSet = $this->mapper->select($where);
+        $resultSet = $this->mapper->findBy($where->getArrayCopy());
         if (count($resultSet) == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -95,17 +95,11 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
         /* @var \Zend\Stdlib\Parameters $params */
         $params = $this->request->getQueryParams();
 
-
         $sort = null;
         if (isset($params['sort']) && in_array($params['sort'], array_keys($this->entityPrototype->getArrayCopy()))) {
             $sort = [$params['sort'] => isset($params['order']) ? $params['order'] : 'ASC'];
         } else {
             $sort = [static::SORT_BY => 'ASC'];
-        }
-        $query = $this->request->getQueryParams();
-        $fields = $query['fields'] ?? [];
-        if (!empty($fields)) {
-            $this->table->getResultSetPrototype()->getObjectPrototype()->setFields(explode(',', $fields));
         }
 
         $where = new ArrayObject([]);
@@ -130,15 +124,15 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
      */
     public function delete($id)
     {
-        $where = new ArrayObject([static::IDENTIFIER_NAME => $id]);
-        $result = $this->table->select($where);
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
 
+        $where = new ArrayObject([static::IDENTIFIER_NAME => $id]);
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $this->table->delete($where);
+        $this->mapper->delete($where->getArrayCopy());
     }
 
     /**
@@ -147,9 +141,8 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
      */
     public function patch($id, array $data): Entity
     {
-        $where = [static::IDENTIFIER_NAME => $id];
 
-        $result = $this->table->select($where);
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -161,7 +154,8 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, $where);
+        $where = [static::IDENTIFIER_NAME => $id];
+        $this->mapper->update($data, $where);
 
         return $entity;
     }
@@ -172,9 +166,7 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
      */
     public function update($id, array $data): Entity
     {
-        $where = [static::IDENTIFIER_NAME => $id];
-
-        $result = $this->table->select($where);
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -184,11 +176,11 @@ abstract class MapperRestAction extends AbstractRestAction implements EventManag
         $data = $entity->prepareDataForSql($data);
         $data = new ArrayObject($data);
 
+        $where = [static::IDENTIFIER_NAME => $id];
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, $where);
+        $this->mapper->update($data, $where);
 
         return $entity;
     }
-
 }
