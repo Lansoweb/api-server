@@ -186,5 +186,4 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         return $entity;
     }
-
 }
