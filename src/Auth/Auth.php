@@ -38,7 +38,7 @@ class Auth implements MiddlewareInterface
         }
         $token = $token[0];
 
-        if ( !preg_match( '/^basic/i', $token ) ) {
+        if (!preg_match('/^basic/i', $token)) {
             throw new AuthorizationException('Invalid Authorization header', 401);
         }
 
@@ -61,4 +61,3 @@ class Auth implements MiddlewareInterface
         }
     }
 }
-

@@ -173,25 +173,37 @@ abstract class AbstractRestAction implements MiddlewareInterface
         $first = $query;
         if (isset($first['page']) && $first['page'] > 1) {
             unset($first['page']);
-            $hal->addLink('first', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($first)));
+            $hal->addLink(
+                'first',
+                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($first))
+            );
             $prev = $query;
             $prev['page'] = $prev['page'] - 1;
             if ($prev['page'] == 0) {
                 unset($prev['page']);
             }
-            $hal->addLink('previous', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($prev)));
+            $hal->addLink(
+                'previous',
+                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($prev))
+            );
         }
 
         $next = $query;
         if (isset($next['page']) && $next['page'] + 1 < $maxPages) {
             $next['page'] = $next['page'] + 1;
-            $hal->addLink('next', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($next)));
+            $hal->addLink(
+                'next',
+                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($next))
+            );
         }
 
         if ($maxPages > 1) {
             $last = $query;
             $last['page'] = $maxPages;
-            $hal->addLink('last', (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($last)));
+            $hal->addLink(
+                'last',
+                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($last))
+            );
         }
     }
 
@@ -210,7 +222,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             $entityArray = $entity->getArrayCopy();
             $hal = new Hal($this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null), $entityArray);
 
-            return new JsonResponse(json_decode($hal->asJson(),true), $code);
+            return new JsonResponse(json_decode($hal->asJson(), true), $code);
         }
 
         if (!($entity instanceof Collection)) {

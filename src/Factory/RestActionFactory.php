@@ -30,7 +30,8 @@ class RestActionFactory implements AbstractFactoryInterface
             $config['tables'][$entityName] ?? $entityName,
             $adapter,
             null,
-            new HydratingResultSet(new ArraySerializable(), new $entityClass));
+            new HydratingResultSet(new ArraySerializable(), new $entityClass)
+        );
         $urlHelper = $container->get(UrlHelper::class);
 
         return new $requestedName($table, new $entityClass, $urlHelper);

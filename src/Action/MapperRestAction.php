@@ -5,26 +5,26 @@ namespace LosMiddleware\ApiServer\Action;
 use LosMiddleware\ApiServer\Action\AbstractRestAction;
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
-use Zend\Db\Sql\Where;
-use Zend\Db\TableGateway\TableGateway;
-use Zend\Expressive\Helper\UrlHelper;
-use Zend\Paginator\Adapter\DbTableGateway;
+use LosMiddleware\ApiServer\Mapper\MapperInterface;
+use LosMiddleware\ApiServer\Paginator\MapperAdapter;
 use Zend\EventManager\EventManagerAwareInterface;
 use Zend\EventManager\EventManagerAwareTrait;
+use Zend\Expressive\Helper\UrlHelper;
+use Zend\Stdlib\ArrayObject;
 
-abstract class TableRestAction extends AbstractRestAction implements EventManagerAwareInterface
+abstract class MapperRestAction extends AbstractRestAction implements EventManagerAwareInterface
 {
     use EventManagerAwareTrait;
 
     const SORT_BY = self::IDENTIFIER_NAME;
 
-    protected $table;
+    protected $mapper;
 
     protected $limitItemsPerPage = 25;
 
-    public function __construct(TableGateway $table, $entityPrototype, UrlHelper $urlHelper)
+    public function __construct(MapperInterface $mapper, $entityPrototype, UrlHelper $urlHelper)
     {
-        $this->table = $table;
+        $this->mapper = $mapper;
         $this->entityPrototype = $entityPrototype;
         $this->urlHelper = $urlHelper;
     }
@@ -49,10 +49,11 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForSql($data);
+        $data = new ArrayObject($data);
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->insert($data);
+        $this->mapper->insert($data->getArrayCopy());
 
         return $entity;
     }
@@ -60,18 +61,17 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::get()
+     * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::fetch()
      */
     public function fetch($id): Entity
     {
-        $where = new Where();
-        $where->equalTo(static::IDENTIFIER_NAME, $id);
+        $where = new ArrayObject([static::IDENTIFIER_NAME, $id]);
 
         $query = $this->request->getQueryParams();
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $resultSet = $this->table->select($where);
+        $resultSet = $this->mapper->findBy($where->getArrayCopy());
         if (count($resultSet) == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -88,13 +88,12 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::getList()
+     * @see \LosMiddleware\ApiServer\Action\AbstractRestAction::fetchAll()
      */
     public function fetchAll(): Collection
     {
-        $params = $this->request->getQueryParams();
         /* @var \Zend\Stdlib\Parameters $params */
-        $where = new Where();
+        $params = $this->request->getQueryParams();
 
         $sort = null;
         if (isset($params['sort']) && in_array($params['sort'], array_keys($this->entityPrototype->getArrayCopy()))) {
@@ -102,15 +101,11 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
         } else {
             $sort = [static::SORT_BY => 'ASC'];
         }
-        $query = $this->request->getQueryParams();
-        $fields = $query['fields'] ?? [];
-        if (!empty($fields)) {
-            $this->table->getResultSetPrototype()->getObjectPrototype()->setFields(explode(',', $fields));
-        }
 
+        $where = new ArrayObject([]);
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $dbAdapter = new DbTableGateway($this->table, $where, $sort);
+        $dbAdapter = new MapperAdapter($this->mapper, $where, $sort);
         $collection = new Collection($dbAdapter);
 
         $itemCountPerPage = $this->itemCountPerPage;
@@ -129,16 +124,15 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function delete($id)
     {
-        $where = [static::IDENTIFIER_NAME => $id];
-
-        $result = $this->table->select($where);
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
 
+        $where = new ArrayObject([static::IDENTIFIER_NAME => $id]);
         $this->getEventManager()->trigger(__FUNCTION__, $this, $where);
 
-        $this->table->delete($where);
+        $this->mapper->delete($where->getArrayCopy());
     }
 
     /**
@@ -147,8 +141,8 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function patch($id, array $data): Entity
     {
-        $where = [static::IDENTIFIER_NAME => $id];
-        $result = $this->table->select($where);
+
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -156,10 +150,12 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForSql($data);
+        $data = new ArrayObject($data);
 
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, $where);
+        $where = [static::IDENTIFIER_NAME => $id];
+        $this->mapper->update($data, $where);
 
         return $entity;
     }
@@ -170,8 +166,7 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
      */
     public function update($id, array $data): Entity
     {
-        $where = [static::IDENTIFIER_NAME => $id];
-        $result = $this->table->select($where);
+        $result = $this->mapper->findById($id);
         if ($result->count() == 0) {
             throw new \Exception('Entity not found', 404);
         }
@@ -179,10 +174,12 @@ abstract class TableRestAction extends AbstractRestAction implements EventManage
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForSql($data);
+        $data = new ArrayObject($data);
 
+        $where = [static::IDENTIFIER_NAME => $id];
         $this->getEventManager()->trigger(__FUNCTION__, $this, $data);
 
-        $this->table->update($data, $where);
+        $this->mapper->update($data, $where);
 
         return $entity;
     }

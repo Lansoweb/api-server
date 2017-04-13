@@ -51,7 +51,6 @@ class Entity implements EntityInterface
 
         $list = [];
         foreach ($this->fields as $field) {
-
             $property = $filterStudly($field);
             $fieldName = extension_loaded('mbstring')
                 ? mb_strtolower($filter($field))
@@ -102,5 +101,4 @@ class Entity implements EntityInterface
         }
         return $data;
     }
-
 }
