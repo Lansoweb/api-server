@@ -1,36 +1,11 @@
 <?php
-use LosMiddleware\ApiProblem;
-use LosMiddleware\ApiServer\Helper\UrlHelperFactory;
-use Zend\Expressive\Helper;
-use Zend\Stratigility\Middleware\ErrorHandler;
-
 return [
-    'dependencies' => [
-        'invokables' => [
-            Helper\ServerUrlHelper::class => Helper\ServerUrlHelper::class,
-            Helper\BodyParams\BodyParamsMiddleware::class => Helper\BodyParams\BodyParamsMiddleware::class,
-        ],
-        'factories' => [
-            Helper\UrlHelper::class => UrlHelperFactory::class,
-            LosMiddleware\ApiServer\Auth\Auth::class => LosMiddleware\ApiServer\Auth\AuthFactory::class,
-            ErrorHandler::class => ApiProblem\ErrorHandlerFactory::class,
-        ],
-    ],
-    'middleware_pipeline' => [
-        'always' => [
-            'middleware' => [
-                Helper\ServerUrlMiddleware::class,
-                Helper\BodyParams\BodyParamsMiddleware::class,
-                ErrorHandler::class,
-                //LosMiddleware\ApiServer\Auth\Auth::class,
-            ],
-            'priority' => 10000,
-        ],
-    ],
-    'api_server' => [
-        'auth' => [
-            'clients' => [
-                //'user' => 'hashed password',
+    'los' => [
+        'api_server' => [
+            'auth' => [
+                'clients' => [
+                    //'user' => 'hashed password',
+                ],
             ],
         ],
     ],

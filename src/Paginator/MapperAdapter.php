@@ -1,9 +1,10 @@
 <?php
+declare(strict_types = 1);
+
 namespace LosMiddleware\ApiServer\Paginator;
 
 use LosMiddleware\ApiServer\Mapper\MapperInterface;
 use Zend\Paginator\Adapter\AdapterInterface;
-use Zend\Stdlib\ArrayObject;
 
 class MapperAdapter implements AdapterInterface
 {
@@ -12,7 +13,7 @@ class MapperAdapter implements AdapterInterface
     private $order;
     private $group;
 
-    public function __construct(MapperInterface $mapper, ArrayObject $where = null, $order = null, $group = null)
+    public function __construct(MapperInterface $mapper, array $where = [], $order = null, $group = null)
     {
         $this->mapper = $mapper;
         $this->where = $where;

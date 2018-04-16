@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace LosMiddleware\ApiServer\Entity;
 
 use Zend\Filter\Word\CamelCaseToUnderscore;
@@ -17,6 +19,7 @@ class Entity implements EntityInterface
      * Exchange internal values from provided array.
      * Call a setter. If not available, try the property.
      * @see \Zend\Stdlib\ArraySerializableInterface::exchangeArray()
+     * @param array $data
      */
     public function exchangeArray(array $data)
     {
@@ -85,16 +88,16 @@ class Entity implements EntityInterface
      * Define which fields will be returned by getArrayCopy
      * @param array $fields
      */
-    public function setFields(array $fields)
+    public function setFields(array $fields) : void
     {
         $this->fields = array_merge([static::IDENTIFIER_NAME], $fields);
     }
 
     /**
-     * {@inheritDoc}
-     * @see \Entity\EntityInterface::prepareDataForSql()
+     * @param array $data
+     * @return array
      */
-    public function prepareDataForSql(array $data = []) : array
+    public function prepareDataForStorage(array $data = []) : array
     {
         if (empty($data)) {
             $data = $this->getArrayCopy();
