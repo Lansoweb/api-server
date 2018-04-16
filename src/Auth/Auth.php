@@ -1,63 +1,115 @@
 <?php
+declare(strict_types = 1);
+
 namespace LosMiddleware\ApiServer\Auth;
 
-use LosMiddleware\ApiServer\Exception\AuthorizationException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Zend\Db\Adapter\Adapter;
-use Zend\Stratigility\MiddlewareInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Zend\ProblemDetails\ProblemDetailsResponseFactory;
 
 class Auth implements MiddlewareInterface
 {
-    private $adapter;
-    protected $users = [];
+    /** @var array */
+    private $users = [];
+    /** @var ProblemDetailsResponseFactory */
+    private $problemDetailsResponseFactory;
 
-    public function __construct(Adapter $adapter, array $users)
+    /**
+     * Auth constructor.
+     * @param array $users
+     * @param ProblemDetailsResponseFactory $problemDetailsResponseFactory
+     */
+    public function __construct(array $users, ProblemDetailsResponseFactory $problemDetailsResponseFactory)
     {
-        $this->adapter = $adapter;
         $this->users = $users;
+        $this->problemDetailsResponseFactory = $problemDetailsResponseFactory;
     }
 
-    public function __invoke(Request $request, Response $response, callable $out = null)
+    /**
+     * @param Request $request
+     * @param RequestHandlerInterface $handler
+     * @return Response
+     */
+    public function process(Request $request, RequestHandlerInterface $handler): Response
     {
-        $this->validate($request);
+        $response = $this->validate($request);
 
-        return $out($request, $response);
+        if ($response !== null) {
+            return $response;
+        }
+
+        return $handler->handle($request);
     }
 
-    protected function validate(Request $request)
+    /**
+     * @param Request $request
+     * @return null|Response
+     */
+    protected function validate(Request $request) : ?Response
     {
-        if (!$request->hasHeader('authorization')) {
-            throw new AuthorizationException('Missing Authorization header', 401);
+        if (! $request->hasHeader('authorization')) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Missing Authorization header'
+            );
         }
 
         $token = $request->getHeader('authorization');
 
         if (empty($token)) {
-            throw new AuthorizationException('Missing Authorization header', 401);
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Missing Authorization header'
+            );
         }
         $token = $token[0];
 
-        if (!preg_match('/^basic/i', $token)) {
-            throw new AuthorizationException('Invalid Authorization header', 401);
+        if (! preg_match('/^basic/i', $token)) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Invalid Authorization header'
+            );
         }
 
         $auth = base64_decode(substr($token, 6));
-        if (!$auth) {
-            throw new AuthorizationException('Unable to parse Authorization header', 401);
+        if (! $auth) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Unable to parse Authorization header'
+            );
         }
 
-        $creds = array_filter(explode(':', $auth));
-        if (count($creds) != 2) {
-            throw new AuthorizationException('Invalid Authorization header during parse', 401);
+        $tokens = explode(':', $auth);
+        if (count($tokens) != 2) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Invalid Authorization header during parse'
+            );
         }
 
-        if (!array_key_exists($creds[0], $this->users)) {
-            throw new AuthorizationException('Authorization failed.', 401);
+        $identity = $tokens[0];
+        $credential = $tokens[1];
+        if (! array_key_exists($identity, $this->users)) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Authorization failed.'
+            );
         }
 
-        if ($this->users[$creds[0]] != $creds[1] && !hash_equals($this->users[$creds[0]], $creds[1])) {
-            throw new AuthorizationException('Authorization failed.', 401);
+        if ($this->users[$identity] != $credential && ! hash_equals($this->users[$identity], $credential)) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $request,
+                401,
+                'Authorization failed.'
+            );
         }
     }
 }

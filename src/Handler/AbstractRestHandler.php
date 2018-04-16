@@ -1,37 +1,55 @@
 <?php
+declare(strict_types = 1);
+
 namespace LosMiddleware\ApiServer\Action;
 
-use LosMiddleware\ApiProblem\Model\ApiProblem;
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
+use LosMiddleware\ApiServer\Entity\EntityInterface;
 use LosMiddleware\ApiServer\Exception\MethodNotAllowedException;
+use LosMiddleware\ApiServer\Exception\RuntimeException;
 use LosMiddleware\ApiServer\Exception\ValidationException;
-use Nocarrier\Hal;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface;
+use Zend\Diactoros\Response\EmptyResponse;
 use Zend\Diactoros\Response\JsonResponse;
+use Zend\Expressive\Hal\HalResource;
+use Zend\Expressive\Hal\Link;
+use Zend\Expressive\Helper\UrlHelper;
 use Zend\InputFilter\InputFilterAwareInterface;
-use Zend\Stratigility\MiddlewareInterface;
+use Zend\ProblemDetails\ProblemDetailsResponseFactory;
 
-abstract class AbstractRestAction implements MiddlewareInterface
+abstract class AbstractRestHandler implements RequestHandlerInterface
 {
     const IDENTIFIER_NAME = 'id';
 
-    /**
-     * @var Entity
-     */
+    /** @var Entity */
     protected $entityPrototype;
 
     protected $parsedData;
 
+    /** @var Request */
     protected $request;
 
-    /**
-     * @var \Zend\Expressive\Helper\UrlHelper
-     */
+    /** @var UrlHelper */
     protected $urlHelper;
 
     protected $itemCountPerPage = 25;
+
+    /** @var ProblemDetailsResponseFactory */
+    protected $problemDetailsResponseFactory;
+
+    /**
+     * AbstractRestAction constructor.
+     * @param UrlHelper $urlHelper
+     * @param ProblemDetailsResponseFactory $problemDetailsResponseFactory
+     */
+    public function __construct(UrlHelper $urlHelper, ProblemDetailsResponseFactory $problemDetailsResponseFactory)
+    {
+        $this->urlHelper = $urlHelper;
+        $this->problemDetailsResponseFactory = $problemDetailsResponseFactory;
+    }
 
     /**
      * Method to return the resource name for collections generation
@@ -40,58 +58,74 @@ abstract class AbstractRestAction implements MiddlewareInterface
      */
     public function getResourceName() : string
     {
-        return strtolower(str_replace('Action', '', end(explode('\\', get_class($this)))));
+        $tokens = explode('\\', get_class($this));
+        $className = end($tokens);
+        return strtolower(str_replace('Handler', '', $className));
     }
 
     /**
      * @param Request $request
-     * @param Response $response
-     * @param null|callable $next
-     * @return null|Response
+     * @return Response
      */
-    public function __invoke(Request $request, Response $response, callable $next = null)
+    public function handle(Request $request): Response
     {
         $requestMethod = strtoupper($request->getMethod());
-        $id = $request->getAttribute(static::IDENTIFIER_NAME);
-
         $this->request = $request;
+
+        try {
+            return $this->handleMethods($requestMethod);
+        } catch (ValidationException $ex) {
+            return $this->problemDetailsResponseFactory->createResponse(
+                $this->request,
+                $ex->getCode(),
+                $ex->getMessage(),
+            '',
+            '',
+                ['validation_messages' => $ex->getValidationMessages()]
+            );
+        }
+    }
+
+    protected function handleMethods(string $requestMethod) : Response
+    {
+        $id = $this->request->getAttribute(static::IDENTIFIER_NAME);
 
         switch ($requestMethod) {
             case 'GET':
                 return isset($id)
                     ? $this->handleFetch($id)
                     : $this->handleFetchAll();
-                break;
             case 'POST':
                 if (isset($id)) {
-                    throw new MethodNotAllowedException('Invalid entity operation POST', 405);
+                    return $this->problemDetailsResponseFactory->createResponse(
+                        $this->request,
+                        405,
+                        'Invalid entity operation POST'
+                    );
                 }
                 return $this->handlePost();
-                break;
             case 'PUT':
                 return isset($id)
                     ? $this->handleUpdate($id)
                     : $this->handleUpdateList();
-                break;
             case 'PATCH':
                 return isset($id)
                     ? $this->handlePatch($id)
                     : $this->handlePatchList();
-                break;
             case 'DELETE':
                 return isset($id)
                     ? $this->handleDelete($id)
                     : $this->handleDeleteList();
-                break;
             case 'HEAD':
                 return $this->head();
-                break;
             case 'OPTIONS':
                 return $this->options();
-                break;
             default:
-                return $next($request, $response);
-                break;
+                return $this->problemDetailsResponseFactory->createResponse(
+                    $this->request,
+                    405,
+                    'Invalid operation'
+                );
         }
     }
 
@@ -105,11 +139,11 @@ abstract class AbstractRestAction implements MiddlewareInterface
     {
         $data = $this->request->getParsedBody();
 
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             $data = [];
         }
 
-        if ($this->entityPrototype == null || !($this->entityPrototype instanceof InputFilterAwareInterface)) {
+        if ($this->entityPrototype == null || ! ($this->entityPrototype instanceof InputFilterAwareInterface)) {
             return $data;
         }
 
@@ -117,13 +151,8 @@ abstract class AbstractRestAction implements MiddlewareInterface
             $this->entityPrototype->getInputFilter()->setValidationGroup(array_keys($data));
         }
 
-        if (!$this->entityPrototype->getInputFilter()->setData($data)->isValid()) {
-            throw new ValidationException(
-                'Unprocessable Entity',
-                422,
-                null,
-                ['validation_messages' => $this->entityPrototype->getInputFilter()->getMessages()]
-            );
+        if (! $this->entityPrototype->getInputFilter()->setData($data)->isValid()) {
+            throw ValidationException::fromMessages($this->entityPrototype->getInputFilter()->getMessages());
         }
 
         $values = $this->entityPrototype->getInputFilter()->getValues();
@@ -145,7 +174,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
      */
     protected function generateUrl($id = null) : string
     {
-        if (!$this->urlHelper) {
+        if (! $this->urlHelper) {
             return (string)$this->request->getUri();
         }
 
@@ -162,9 +191,15 @@ abstract class AbstractRestAction implements MiddlewareInterface
         return (string)$this->request->getUri()->withPath($path);
     }
 
-    protected function addPaginatorLinks($entity, $hal)
+    /**
+     * @param Collection $collection
+     * @return array
+     */
+    protected function addPaginatorLinks(Collection $collection) : array
     {
-        $maxPages = ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1));
+        $list = [];
+
+        $maxPages = ceil(max($collection->getTotalItemCount() / $collection->getItemCountPerPage(), 1));
 
         $path = $this->urlHelper->__invoke();
         parse_str($this->request->getUri()->getQuery(), $query);
@@ -173,7 +208,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
         $first = $query;
         if (isset($first['page']) && $first['page'] > 1) {
             unset($first['page']);
-            $hal->addLink(
+            $list[] = new Link(
                 'first',
                 (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($first))
             );
@@ -182,7 +217,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
             if ($prev['page'] == 0) {
                 unset($prev['page']);
             }
-            $hal->addLink(
+            $list[] = new Link(
                 'previous',
                 (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($prev))
             );
@@ -191,7 +226,7 @@ abstract class AbstractRestAction implements MiddlewareInterface
         $next = $query;
         if (isset($next['page']) && $next['page'] + 1 < $maxPages) {
             $next['page'] = $next['page'] + 1;
-            $hal->addLink(
+            $list[] = new Link(
                 'next',
                 (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($next))
             );
@@ -200,11 +235,13 @@ abstract class AbstractRestAction implements MiddlewareInterface
         if ($maxPages > 1) {
             $last = $query;
             $last['page'] = $maxPages;
-            $hal->addLink(
+            $list[] = new Link(
                 'last',
                 (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($last))
             );
         }
+
+        return $list;
     }
 
     /**
@@ -213,50 +250,55 @@ abstract class AbstractRestAction implements MiddlewareInterface
      * @param Entity|Collection $entity
      * @param int $code
      * @throws \InvalidArgumentException
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function generateResponse($entity, $code = 200)
+    protected function generateResponse($entity, $code = 200) : Response
     {
         //Just an entity
         if ($entity instanceof Entity) {
             $entityArray = $entity->getArrayCopy();
-            $hal = new Hal($this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null), $entityArray);
+            $hal = new HalResource(
+                $entityArray,
+                [new Link('self', $this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null))],
+                []
+            );
 
-            return new JsonResponse(json_decode($hal->asJson(), true), $code);
+            return new JsonResponse($hal->toArray(), $code);
         }
 
-        if (!($entity instanceof Collection)) {
-            throw new \InvalidArgumentException('Method result must be either an Entity or Collection');
+        if (! ($entity instanceof Collection)) {
+            throw new RuntimeException('Method result must be either an Entity or Collection');
         }
 
         //Collections
-        $hal = new Hal($this->generateUrl());
-
-        $this->addPaginatorLinks($entity, $hal);
+        $links = $this->addPaginatorLinks($entity);
+        $embedded = [];
 
         $entities = $entity->getCurrentItems();
+        /** @var Entity $tok */
         foreach ($entities as $tok) {
-            $entityArray = $tok->getArrayCopy();
-            $halEntity = new Hal($this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null), $entityArray);
-            $hal->addResource($this->getResourceName(), $halEntity);
+            $embedded[] = $this->generateResponse($tok);
         }
-        $hal->setData([
+
+        $data = [
             'page_count' => ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1)),
             'page_size' => $entity->getItemCountPerPage(),
             'total_items' => $entity->getTotalItemCount(),
             'page' => $entity->getCurrentPageNumber(),
-        ]);
+        ];
 
-        return new JsonResponse(json_decode($hal->asJson()), $code);
+        $hal = new HalResource($data, $links, $embedded);
+
+        return new JsonResponse($hal->toArray(), $code);
     }
 
     /**
      * Fetch an Entity
      *
      * @param mixed $id
-     * @return \LosMiddleware\ApiProblem\Model\ApiProblem|\Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handleFetch($id)
+    protected function handleFetch($id) : Response
     {
         $entity = $this->fetch($id);
         return $this->generateResponse($entity);
@@ -265,9 +307,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
     /**
      * Fetch a collection
      *
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handleFetchAll()
+    protected function handleFetchAll() : Response
     {
         $list = $this->fetchAll();
         return $this->generateResponse($list);
@@ -276,9 +318,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
     /**
      * Create a new Entity
      *
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handlePost()
+    protected function handlePost() : Response
     {
         $data = $this->validateBody();
         $entity = $this->create($data);
@@ -290,9 +332,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
      * Update an Entity
      *
      * @param mixed $id
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handleUpdate($id)
+    protected function handleUpdate($id) : Response
     {
         $data = $this->validateBody();
         $entity = $this->update($id, $data);
@@ -303,9 +345,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
     /**
      * Update a collection
      *
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handleUpdateList()
+    protected function handleUpdateList() : Response
     {
         $data = $this->validateBody();
         $list = $this->updateList($data);
@@ -317,9 +359,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
      * Update some properties from an Entity
      *
      * @param mixed $id
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handlePatch($id)
+    protected function handlePatch($id) : Response
     {
         $data = $this->validateBody();
         $entity = $this->patch($id, $data);
@@ -330,9 +372,9 @@ abstract class AbstractRestAction implements MiddlewareInterface
     /**
      * Updates some properties from a Collection
      *
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return Response
      */
-    protected function handlePatchList()
+    protected function handlePatchList() : Response
     {
         $data = $this->validateBody();
         $list = $this->patchList($data);
@@ -344,50 +386,73 @@ abstract class AbstractRestAction implements MiddlewareInterface
      * Delete an Entity
      *
      * @param mixed $id
-     * @return \Zend\Diactoros\Response\JsonResponse
+     * @return EmptyResponse
      */
-    protected function handleDelete($id)
+    protected function handleDelete($id) : Response
     {
         $this->delete($id);
-        return new JsonResponse(null, 204);
+        return new EmptyResponse(204);
     }
 
     /**
      * Delete a Collection
-
-     * @return \Zend\Diactoros\Response\JsonResponse
+     *
+     * @return EmptyResponse
      */
-    protected function handleDeleteList()
+    protected function handleDeleteList() : Response
     {
         $this->deleteList();
-        return new JsonResponse(null, 204);
+        return new EmptyResponse(204);
     }
 
-    public function fetch($id) : Entity
+    /**
+     * @param $id
+     * @return Entity
+     */
+    public function fetch($id) : EntityInterface
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
+    /**
+     * @return Collection
+     */
     public function fetchAll() : Collection
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
-    public function create(array $data) : Entity
+    /**
+     * @param array $data
+     * @return Entity
+     */
+    public function create(array $data) : EntityInterface
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
-    public function update($id, array $data) : Entity
+    /**
+     * @param $id
+     * @param array $data
+     * @return Entity
+     */
+    public function update($id, array $data) : EntityInterface
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
+    /**
+     * @param array $data
+     * @return Collection
+     */
     public function updateList(array $data) : Collection
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
+    /**
+     * @param $id
+     */
     public function delete($id)
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
@@ -408,11 +473,20 @@ abstract class AbstractRestAction implements MiddlewareInterface
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
-    public function patch($id, array $data) : Entity
+    /**
+     * @param $id
+     * @param array $data
+     * @return Entity
+     */
+    public function patch($id, array $data) : EntityInterface
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
     }
 
+    /**
+     * @param array $data
+     * @return Collection
+     */
     public function patchList(array $data) : Collection
     {
         throw new MethodNotAllowedException('Method not allowed', 405);
