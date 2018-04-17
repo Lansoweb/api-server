@@ -1,17 +1,17 @@
 <?php
 declare(strict_types = 1);
 
-namespace LosMiddleware\ApiServer\Action;
+namespace LosMiddleware\ApiServer\Handler;
 
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
 use LosMiddleware\ApiServer\Exception\RuntimeException;
 use LosMiddleware\ApiServer\Mapper\MapperInterface;
-use LosMiddleware\ApiServer\Paginator\MapperAdapter;
+use Zend\Expressive\Hal\HalResponseFactory;
+use Zend\Expressive\Hal\ResourceGenerator;
 use Zend\Expressive\Helper\UrlHelper;
 use Zend\ProblemDetails\ProblemDetailsResponseFactory;
-use Zend\Stdlib\ArrayObject;
 
 abstract class MapperRestHandler extends AbstractRestHandler
 {
@@ -27,9 +27,11 @@ abstract class MapperRestHandler extends AbstractRestHandler
         MapperInterface $mapper,
         Entity $entityPrototype,
         UrlHelper $urlHelper,
-        ProblemDetailsResponseFactory $problemDetailsResponseFactory
+        ProblemDetailsResponseFactory $problemDetailsResponseFactory,
+        ResourceGenerator $resourceGenerator,
+        HalResponseFactory $responseFactory
     ) {
-        parent::__construct($urlHelper, $problemDetailsResponseFactory);
+        parent::__construct($urlHelper, $problemDetailsResponseFactory, $resourceGenerator, $responseFactory);
 
         $this->mapper = $mapper;
         $this->entityPrototype = $entityPrototype;
@@ -37,7 +39,7 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::getResourceName()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::getResourceName()
      */
     public function getResourceName(): string
     {
@@ -47,7 +49,7 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::create()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::create()
      */
     public function create(array $data): EntityInterface
     {
@@ -63,19 +65,18 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::fetch()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::fetch()
      */
     public function fetch($id): EntityInterface
     {
-        $where = [static::IDENTIFIER_NAME, $id];
-
-        $query = $this->request->getQueryParams();
+        $where = [static::IDENTIFIER_NAME => $id];
 
         $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
             throw new RuntimeException('Entity not found', 404);
         }
 
+        $query = $this->request->getQueryParams();
         $fields = $query['fields'] ?? '';
         if (! empty($fields)) {
             $entity->setFields(explode(',', $fields));
@@ -85,32 +86,31 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::fetchAll()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::fetchAll()
      */
     public function fetchAll(array $where = []): Collection
     {
-        /* @var \Zend\Stdlib\Parameters $params */
-        $params = $this->request->getQueryParams();
+        $query = $this->request->getQueryParams();
 
-        $sortParam = $params['sort'] ?? static::SORT_BY;
-        $sort = [$sortParam => $params['order'] ?? 'ASC'];
+        /** @var Collection $collection */
+        $collection = $this->mapper->findBy($query, $query);
 
-        $dbAdapter = new MapperAdapter($this->mapper, $where, $sort);
-        $collection = new Collection($dbAdapter);
+        $page = (int) ($query['page'] ?? 1);
 
-        $itemCountPerPage = $this->itemCountPerPage;
-        if (array_key_exists('items_per_page', $params) && is_numeric($params['items_per_page'])) {
-            $itemCountPerPage = min([$this->limitItemsPerPage, $params['items_per_page']]);
+        $collection->setItemCountPerPage(25);
+        $collection->setCurrentPageNumber($page);
+
+        $fields = $query['fields'] ?? '';
+        if (! empty($fields)) {
+            $this->mapper->setFields(explode(',', $fields));
         }
-        $collection->setItemCountPerPage($itemCountPerPage);
-        $collection->setCurrentPageNumber($params['page'] ?? 1);
 
         return $collection;
     }
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::delete()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::delete()
      */
     public function delete($id)
     {
@@ -126,7 +126,7 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::patch()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::patch()
      */
     public function patch($id, array $data): EntityInterface
     {
@@ -137,7 +137,6 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForStorage($data);
-        $data = new ArrayObject($data);
 
         $where = [static::IDENTIFIER_NAME => $id];
         $this->mapper->update($data, $where);
@@ -147,7 +146,7 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
     /**
      * {@inheritDoc}
-     * @see \LosMiddleware\ApiServer\Action\AbstractRestHandler::update()
+     * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::update()
      */
     public function update($id, array $data): EntityInterface
     {
@@ -158,7 +157,6 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForStorage($data);
-        $data = new ArrayObject($data);
 
         $where = [static::IDENTIFIER_NAME => $id];
 

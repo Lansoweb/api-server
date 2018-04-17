@@ -1,21 +1,20 @@
 <?php
 declare(strict_types = 1);
 
-namespace LosMiddleware\ApiServer\Action;
+namespace LosMiddleware\ApiServer\Handler;
 
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
 use LosMiddleware\ApiServer\Exception\MethodNotAllowedException;
-use LosMiddleware\ApiServer\Exception\RuntimeException;
 use LosMiddleware\ApiServer\Exception\ValidationException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface;
 use Zend\Diactoros\Response\EmptyResponse;
-use Zend\Diactoros\Response\JsonResponse;
-use Zend\Expressive\Hal\HalResource;
-use Zend\Expressive\Hal\Link;
+use Zend\Expressive\Hal\HalResponseFactory;
+use Zend\Expressive\Hal\Metadata\RouteBasedCollectionMetadata;
+use Zend\Expressive\Hal\ResourceGenerator;
 use Zend\Expressive\Helper\UrlHelper;
 use Zend\InputFilter\InputFilterAwareInterface;
 use Zend\ProblemDetails\ProblemDetailsResponseFactory;
@@ -26,29 +25,36 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /** @var Entity */
     protected $entityPrototype;
-
-    protected $parsedData;
-
     /** @var Request */
     protected $request;
-
     /** @var UrlHelper */
     protected $urlHelper;
-
+    /** @var int  */
     protected $itemCountPerPage = 25;
-
     /** @var ProblemDetailsResponseFactory */
     protected $problemDetailsResponseFactory;
+    /** @var ResourceGenerator */
+    private $resourceGenerator;
+    /** @var HalResponseFactory  */
+    private $responseFactory;
 
     /**
      * AbstractRestAction constructor.
      * @param UrlHelper $urlHelper
      * @param ProblemDetailsResponseFactory $problemDetailsResponseFactory
+     * @param ResourceGenerator $resourceGenerator
+     * @param HalResponseFactory $responseFactory
      */
-    public function __construct(UrlHelper $urlHelper, ProblemDetailsResponseFactory $problemDetailsResponseFactory)
-    {
+    public function __construct(
+        UrlHelper $urlHelper,
+        ProblemDetailsResponseFactory $problemDetailsResponseFactory,
+        ResourceGenerator $resourceGenerator,
+        HalResponseFactory $responseFactory
+    ) {
         $this->urlHelper = $urlHelper;
         $this->problemDetailsResponseFactory = $problemDetailsResponseFactory;
+        $this->resourceGenerator = $resourceGenerator;
+        $this->responseFactory = $responseFactory;
     }
 
     /**
@@ -79,8 +85,8 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
                 $this->request,
                 $ex->getCode(),
                 $ex->getMessage(),
-            '',
-            '',
+                '',
+                '',
                 ['validation_messages' => $ex->getValidationMessages()]
             );
         }
@@ -167,84 +173,6 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     }
 
     /**
-     * Generates an url for the entity or collection
-     *
-     * @param mixed $id
-     * @return string
-     */
-    protected function generateUrl($id = null) : string
-    {
-        if (! $this->urlHelper) {
-            return (string)$this->request->getUri();
-        }
-
-        if ($id !== null) {
-            $path = $this->urlHelper->__invoke(null, [static::IDENTIFIER_NAME => $id]);
-            parse_str($this->request->getUri()->getQuery(), $query);
-            unset($query['page']);
-            unset($query['sort']);
-            unset($query['order']);
-            return (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($query));
-        }
-
-        $path = $this->urlHelper->__invoke();
-        return (string)$this->request->getUri()->withPath($path);
-    }
-
-    /**
-     * @param Collection $collection
-     * @return array
-     */
-    protected function addPaginatorLinks(Collection $collection) : array
-    {
-        $list = [];
-
-        $maxPages = ceil(max($collection->getTotalItemCount() / $collection->getItemCountPerPage(), 1));
-
-        $path = $this->urlHelper->__invoke();
-        parse_str($this->request->getUri()->getQuery(), $query);
-        $query['page'] = $query['page'] ?? 1;
-
-        $first = $query;
-        if (isset($first['page']) && $first['page'] > 1) {
-            unset($first['page']);
-            $list[] = new Link(
-                'first',
-                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($first))
-            );
-            $prev = $query;
-            $prev['page'] = $prev['page'] - 1;
-            if ($prev['page'] == 0) {
-                unset($prev['page']);
-            }
-            $list[] = new Link(
-                'previous',
-                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($prev))
-            );
-        }
-
-        $next = $query;
-        if (isset($next['page']) && $next['page'] + 1 < $maxPages) {
-            $next['page'] = $next['page'] + 1;
-            $list[] = new Link(
-                'next',
-                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($next))
-            );
-        }
-
-        if ($maxPages > 1) {
-            $last = $query;
-            $last['page'] = $maxPages;
-            $list[] = new Link(
-                'last',
-                (string)$this->request->getUri()->withPath($path)->withQuery(http_build_query($last))
-            );
-        }
-
-        return $list;
-    }
-
-    /**
      * Generates a proper response based on the Entity ot Collection
      *
      * @param Entity|Collection $entity
@@ -254,42 +182,34 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
      */
     protected function generateResponse($entity, $code = 200) : Response
     {
-        //Just an entity
         if ($entity instanceof Entity) {
-            $entityArray = $entity->getArrayCopy();
-            $hal = new HalResource(
-                $entityArray,
-                [new Link('self', $this->generateUrl($entityArray[static::IDENTIFIER_NAME] ?? null))],
-                []
-            );
-
-            return new JsonResponse($hal->toArray(), $code);
+            $resource = $this->resourceGenerator->fromObject($entity, $this->request);
+            return $this->responseFactory->createResponse($this->request, $resource);
         }
 
-        if (! ($entity instanceof Collection)) {
-            throw new RuntimeException('Method result must be either an Entity or Collection');
+        $queryParams = $this->request->getQueryParams();
+
+        $metadataMap = $this->resourceGenerator->getMetadataMap();
+        /** @var RouteBasedCollectionMetadata $metadata */
+        $metadata = $metadataMap->get(get_class($entity));
+        $metadataQuery = $origMetadataQuery = $metadata->getQueryStringArguments();
+        foreach ($queryParams as $key => $value) {
+            $metadataQuery = array_merge($metadataQuery, [$key => $value]);
+        }
+        $metadata->setQueryStringArguments($metadataQuery);
+
+        $resource = $this->resourceGenerator->fromObject($entity, $this->request);
+
+        // Reset query string arguments
+        $metadata->setQueryStringArguments($origMetadataQuery);
+
+        $response = $this->responseFactory->createResponse($this->request, $resource);
+
+        if ($code !== 200) {
+            $response = $response->withStatus($code);
         }
 
-        //Collections
-        $links = $this->addPaginatorLinks($entity);
-        $embedded = [];
-
-        $entities = $entity->getCurrentItems();
-        /** @var Entity $tok */
-        foreach ($entities as $tok) {
-            $embedded[] = $this->generateResponse($tok);
-        }
-
-        $data = [
-            'page_count' => ceil(max($entity->getTotalItemCount() / $entity->getItemCountPerPage(), 1)),
-            'page_size' => $entity->getItemCountPerPage(),
-            'total_items' => $entity->getTotalItemCount(),
-            'page' => $entity->getCurrentPageNumber(),
-        ];
-
-        $hal = new HalResource($data, $links, $embedded);
-
-        return new JsonResponse($hal->toArray(), $code);
+        return $response;
     }
 
     /**
