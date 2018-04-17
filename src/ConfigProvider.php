@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace LosMiddleware\ApiServer;
 
 use LosMiddleware\ApiServer\Auth;

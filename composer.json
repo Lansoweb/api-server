@@ -41,7 +41,7 @@
       "@cs-check",
       "@phpstan"
     ],
-    "phpstan": "phpstan analyse -l 4 src"
+    "phpstan": "phpstan analyse -l 4 -c phpstan.neon src"
   },
   "homepage" : "https://github.com/lansoweb/api-server",
   "authors" : [ {

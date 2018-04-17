@@ -14,7 +14,7 @@ interface EntityInterface extends ArraySerializableInterface, InputFilterAwareIn
      * @param array $data
      * @return array
      */
-    public function prepareDataForStorage(array $data) : array;
+    public function prepareDataForStorage(array $data = []) : array;
 
     /**
      * @param array $fields
