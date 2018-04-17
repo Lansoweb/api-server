@@ -6,7 +6,7 @@ namespace LosMiddleware\ApiServer\Handler;
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
-use LosMiddleware\ApiServer\Exception\RuntimeException;
+use LosMiddleware\ApiServer\Exception\NotFoundException;
 use LosMiddleware\ApiServer\Mapper\MapperInterface;
 use Zend\Expressive\Hal\HalResponseFactory;
 use Zend\Expressive\Hal\ResourceGenerator;
@@ -55,10 +55,9 @@ abstract class MapperRestHandler extends AbstractRestHandler
     {
         $entity = clone $this->entityPrototype;
 
-        $data = $entity->filterData($data);
-        $data = $entity->prepareDataForStorage($data);
+        $entity->exchangeArray($data);
 
-        $this->mapper->insert($data);
+        $this->mapper->insert($entity);
 
         return $entity;
     }
@@ -73,7 +72,7 @@ abstract class MapperRestHandler extends AbstractRestHandler
 
         $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
-            throw new RuntimeException('Entity not found', 404);
+            throw NotFoundException::create();
         }
 
         $query = $this->request->getQueryParams();
@@ -116,12 +115,10 @@ abstract class MapperRestHandler extends AbstractRestHandler
     {
         $entity = $this->mapper->findById($id);
         if ($entity === null) {
-            throw new RuntimeException('Entity not found', 404);
+            throw NotFoundException::create();
         }
 
-        $where = [static::IDENTIFIER_NAME => $id];
-
-        $this->mapper->delete($where);
+        $this->mapper->delete($entity);
     }
 
     /**
@@ -132,14 +129,13 @@ abstract class MapperRestHandler extends AbstractRestHandler
     {
         $entity = $this->mapper->findById($id);
         if ($entity === null) {
-            throw new RuntimeException('Entity not found', 404);
+            throw NotFoundException::create();
         }
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForStorage($data);
 
-        $where = [static::IDENTIFIER_NAME => $id];
-        $this->mapper->update($data, $where);
+        $this->mapper->update($data, $entity);
 
         return $entity;
     }
@@ -152,15 +148,13 @@ abstract class MapperRestHandler extends AbstractRestHandler
     {
         $entity = $this->mapper->findById($id);
         if ($entity === null) {
-            throw new RuntimeException('Entity not found', 404);
+            throw NotFoundException::create();
         }
 
         $data = $entity->filterData($data);
         $data = $entity->prepareDataForStorage($data);
 
-        $where = [static::IDENTIFIER_NAME => $id];
-
-        $this->mapper->update($data, $where);
+        $this->mapper->update($data, $entity);
 
         return $entity;
     }

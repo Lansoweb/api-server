@@ -7,6 +7,7 @@ use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
 use LosMiddleware\ApiServer\Exception\MethodNotAllowedException;
+use LosMiddleware\ApiServer\Exception\RuntimeException;
 use LosMiddleware\ApiServer\Exception\ValidationException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -80,15 +81,8 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
         try {
             return $this->handleMethods($requestMethod);
-        } catch (ValidationException $ex) {
-            return $this->problemDetailsResponseFactory->createResponse(
-                $this->request,
-                $ex->getCode(),
-                $ex->getMessage(),
-                '',
-                '',
-                ['validation_messages' => $ex->getValidationMessages()]
-            );
+        } catch (RuntimeException $ex) {
+            return $this->problemDetailsResponseFactory->createResponseFromThrowable($this->request, $ex);
         }
     }
 
@@ -103,11 +97,7 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
                     : $this->handleFetchAll();
             case 'POST':
                 if (isset($id)) {
-                    return $this->problemDetailsResponseFactory->createResponse(
-                        $this->request,
-                        405,
-                        'Invalid entity operation POST'
-                    );
+                    throw MethodNotAllowedException::create('Method Not Allowed for Entity');
                 }
                 return $this->handlePost();
             case 'PUT':
@@ -127,11 +117,7 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
             case 'OPTIONS':
                 return $this->options();
             default:
-                return $this->problemDetailsResponseFactory->createResponse(
-                    $this->request,
-                    405,
-                    'Invalid operation'
-                );
+                throw MethodNotAllowedException::create();
         }
     }
 
@@ -326,12 +312,12 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     }
 
     /**
-     * @param $id
-     * @return Entity
+     * @param mixed $id
+     * @return EntityInterface
      */
     public function fetch($id) : EntityInterface
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
@@ -339,26 +325,26 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
      */
     public function fetchAll() : Collection
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
      * @param array $data
-     * @return Entity
+     * @return EntityInterface
      */
     public function create(array $data) : EntityInterface
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
-     * @param $id
+     * @param mixed $id
      * @param array $data
-     * @return Entity
+     * @return EntityInterface
      */
     public function update($id, array $data) : EntityInterface
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
@@ -367,40 +353,40 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
      */
     public function updateList(array $data) : Collection
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
-     * @param $id
+     * @param mixed $id
      */
     public function delete($id)
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     public function deleteList()
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     public function head()
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     public function options()
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
-     * @param $id
+     * @param mixed $id
      * @param array $data
-     * @return Entity
+     * @return EntityInterface
      */
     public function patch($id, array $data) : EntityInterface
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 
     /**
@@ -409,6 +395,6 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
      */
     public function patchList(array $data) : Collection
     {
-        throw new MethodNotAllowedException('Method not allowed', 405);
+        throw MethodNotAllowedException::create();
     }
 }

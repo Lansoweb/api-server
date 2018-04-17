@@ -6,14 +6,14 @@ namespace LosMiddleware\ApiServer\Exception;
 use Zend\ProblemDetails\Exception\CommonProblemDetailsExceptionTrait;
 use Zend\ProblemDetails\Exception\ProblemDetailsExceptionInterface;
 
-class MethodNotAllowedException extends RuntimeException implements ProblemDetailsExceptionInterface
+class NotFoundException extends RuntimeException implements ProblemDetailsExceptionInterface
 {
     use CommonProblemDetailsExceptionTrait;
 
-    public static function create(string $message = 'Method Not Allowed') : self
+    public static function create(string $message = 'Entity Not Found') : self
     {
-        $exception = new self($message, 405);
-        $exception->status = 405;
+        $exception = new self($message, 404);
+        $exception->status = 404;
         $exception->detail = $message;
         $exception->type = '';
         $exception->title = '';

@@ -3,18 +3,21 @@ declare(strict_types = 1);
 
 namespace LosMiddleware\ApiServer\Exception;
 
-class ValidationException extends RuntimeException
+use Zend\ProblemDetails\Exception\CommonProblemDetailsExceptionTrait;
+use Zend\ProblemDetails\Exception\ProblemDetailsExceptionInterface;
+
+class ValidationException extends RuntimeException implements ProblemDetailsExceptionInterface
 {
-    private $validationMessages = [];
+    use CommonProblemDetailsExceptionTrait;
 
     public static function fromMessages(array $messages) : self
     {
         $exception = new self('Unprocessable Entity', 422);
-        $exception->validationMessages = $messages;
-    }
-
-    public function getValidationMessages() : array
-    {
-        return $this->validationMessages;
+        $exception->status = 422;
+        $exception->detail = 'Unprocessable Entity';
+        $exception->type = '';
+        $exception->title = '';
+        $exception->additional = ['messages' => $messages];
+        return $exception;
     }
 }
