@@ -24,7 +24,7 @@ class ConfigProvider
     {
         return [
             'factories' => [
-                Auth\Auth::class => Auth\AuthFactory::class,
+                Auth\AuthMiddleware::class => Auth\AuthFactory::class,
             ],
         ];
     }

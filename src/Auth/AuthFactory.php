@@ -10,11 +10,11 @@ class AuthFactory
 {
     /**
      * @param ContainerInterface $container
-     * @return Auth
+     * @return AuthMiddleware
      */
     public function __invoke(ContainerInterface $container)
     {
         $users = $container->get('config')['los']['api_server']['auth']['clients'] ?? [];
-        return new Auth($users, $container->get(ProblemDetailsResponseFactory::class));
+        return new AuthMiddleware($users, $container->get(ProblemDetailsResponseFactory::class));
     }
 }
