@@ -66,9 +66,9 @@ abstract class MapperRestHandler extends AbstractRestHandler
      * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::fetch()
      */
-    public function fetch($id): EntityInterface
+    public function fetch($id, array $where = []): EntityInterface
     {
-        $where = [static::IDENTIFIER_NAME => $id];
+        $where = array_merge([static::IDENTIFIER_NAME => $id], $where);
 
         $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
@@ -116,9 +116,11 @@ abstract class MapperRestHandler extends AbstractRestHandler
      * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::delete()
      */
-    public function delete($id)
+    public function delete($id, array $where = [])
     {
-        $entity = $this->mapper->findById($id);
+        $where = array_merge([static::IDENTIFIER_NAME => $id], $where);
+
+        $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
             throw NotFoundException::create();
         }
@@ -130,9 +132,11 @@ abstract class MapperRestHandler extends AbstractRestHandler
      * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::patch()
      */
-    public function patch($id, array $data): EntityInterface
+    public function patch($id, array $data, array $where = []): EntityInterface
     {
-        $entity = $this->mapper->findById($id);
+        $where = array_merge([static::IDENTIFIER_NAME => $id], $where);
+
+        $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
             throw NotFoundException::create();
         }
@@ -149,9 +153,11 @@ abstract class MapperRestHandler extends AbstractRestHandler
      * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::update()
      */
-    public function update($id, array $data): EntityInterface
+    public function update($id, array $data, array $where = []): EntityInterface
     {
-        $entity = $this->mapper->findById($id);
+        $where = array_merge([static::IDENTIFIER_NAME => $id], $where);
+
+        $entity = $this->mapper->findOneBy($where);
         if ($entity === null) {
             throw NotFoundException::create();
         }

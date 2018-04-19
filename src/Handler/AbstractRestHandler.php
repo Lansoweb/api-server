@@ -161,7 +161,7 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * Generates a proper response based on the Entity ot Collection
      *
-     * @param Entity|Collection $entity
+     * @param EntityInterface|Collection $entity
      * @param int $code
      * @throws \InvalidArgumentException
      * @return Response
@@ -313,17 +313,20 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * @param mixed $id
+     * @param array $where
      * @return EntityInterface
      */
-    public function fetch($id) : EntityInterface
+    public function fetch($id, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
 
     /**
+     * @param array $where
+     * @param array $options
      * @return Collection
      */
-    public function fetchAll() : Collection
+    public function fetchAll(array $where = [], array $options = []): Collection
     {
         throw MethodNotAllowedException::create();
     }
@@ -340,9 +343,10 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * @param mixed $id
      * @param array $data
+     * @param array $where
      * @return EntityInterface
      */
-    public function update($id, array $data) : EntityInterface
+    public function update($id, array $data, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
@@ -358,8 +362,9 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * @param mixed $id
+     * @param array $where
      */
-    public function delete($id)
+    public function delete($id, array $where = [])
     {
         throw MethodNotAllowedException::create();
     }
@@ -382,9 +387,10 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * @param mixed $id
      * @param array $data
+     * @param array $where
      * @return EntityInterface
      */
-    public function patch($id, array $data) : EntityInterface
+    public function patch($id, array $data, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
