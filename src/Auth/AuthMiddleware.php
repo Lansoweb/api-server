@@ -11,7 +11,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Zend\ProblemDetails\ProblemDetailsResponseFactory;
 
-class Auth implements MiddlewareInterface
+class AuthMiddleware implements MiddlewareInterface
 {
     /** @var array */
     private $users = [];
