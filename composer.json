@@ -12,7 +12,8 @@
     "zendframework/zend-expressive-hal": "^1.0",
     "zendframework/zend-expressive-helpers": "^5.0",
     "zendframework/zend-problem-details": "^1.0",
-    "zendframework/zend-diactoros": "^1.7"
+    "zendframework/zend-diactoros": "^1.7",
+    "los/uql": "^0.4"
   },
   "require-dev" : {
     "phpunit/phpunit" : "^6.0",

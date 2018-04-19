@@ -3,12 +3,13 @@ declare(strict_types = 1);
 
 namespace LosMiddleware\ApiServer\Mapper;
 
+use Los\Uql\ZendDbBuilder;
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
 use Zend\Db\ResultSet\HydratingResultSet;
 use Zend\Db\Sql\Where;
 use Zend\Db\TableGateway\TableGateway;
-use Zend\Paginator\Adapter\DbTableGateway;
+use Zend\Paginator\Adapter\DbSelect;
 
 class ZendDbMapper implements MapperInterface
 {
@@ -24,6 +25,11 @@ class ZendDbMapper implements MapperInterface
     const IDENTIFIER_NAME = 'id';
     const SORT_BY = 'name';
 
+    /**
+     * ZendDbMapper constructor.
+     * @param TableGateway $table
+     * @param string $collectionClass
+     */
     public function __construct(TableGateway $table, string $collectionClass)
     {
         $this->table = $table;
@@ -67,6 +73,10 @@ class ZendDbMapper implements MapperInterface
         return $entity;
     }
 
+    /**
+     * @param array $where
+     * @return int
+     */
     public function count(array $where = []): int
     {
         $predicate = new Where();
@@ -79,56 +89,62 @@ class ZendDbMapper implements MapperInterface
         return $resultSet->count();
     }
 
+    /**
+     * @param EntityInterface $entity
+     * @return bool
+     */
     public function insert(EntityInterface $entity) : bool
     {
         $data = $entity->prepareDataForStorage();
         return $this->table->insert($data) > 0;
     }
 
+    /**
+     * @param array $data
+     * @param EntityInterface $entity
+     * @return bool
+     */
     public function update(array $data, EntityInterface $entity) : bool
     {
         $data = $entity->prepareDataForStorage($data);
-        return $this->table->update($data, [self::IDENTIFIER_NAME => $entity->getArrayCopy()['id']]) > 0;
+        return $this->table->update($data, [self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]) > 0;
     }
 
+    /**
+     * @param EntityInterface $entity
+     * @return bool
+     */
     public function delete(EntityInterface $entity) : bool
     {
-        return $this->table->delete([self::IDENTIFIER_NAME => $entity->getArrayCopy()['id']]) > 0;
+        return $this->table->delete([self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]) > 0;
     }
 
+    /**
+     * @param array $where
+     * @param array $options
+     * @return Collection
+     */
     public function findBy(array $where = [], array $options = []) : Collection
     {
-        $predicate = new Where();
+        $sql    = $this->table->getSql();
+        $select = $sql->select();
+        $select = (new ZendDbBuilder($select))->fromParams($where, $options);
 
-        if (! empty($where)) {
-            /** @var HydratingResultSet $resultSetPrototype */
-            $resultSetPrototype = $this->table->getResultSetPrototype();
-            /** @var EntityInterface $entityPrototype */
-            $entityPrototype = $resultSetPrototype->getObjectPrototype();
-            $properties = array_keys($entityPrototype->getArrayCopy());
-            foreach ($where as $key => $value) {
-                if (! in_array($key, $properties) || $key === 'fields') {
-                    continue;
-                }
-                $predicate->equalTo($key, $value);
-            }
-        }
-
-        $orderBy = $options['sort'] ?? static::SORT_BY;
-        $order = [$orderBy => $options['order'] ?? 'ASC'];
-
-        $dbAdapter = new DbTableGateway(
-            $this->table,
-            $predicate,
-            $order,
-            $options['group'] ?? [],
-            $options['having'] ?? []
+        $dbAdapter = new DbSelect(
+            $select,
+            $sql,
+            $this->table->getResultSetPrototype()
         );
+
+        /** @var Collection $collection */
         $collection = new $this->collectionClass($dbAdapter);
 
         return $collection;
     }
 
+    /**
+     * @param array $fields
+     */
     public function setFields(array $fields): void
     {
         /** @var HydratingResultSet $resultSetPrototype */

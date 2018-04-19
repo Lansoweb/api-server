@@ -87,19 +87,24 @@ abstract class MapperRestHandler extends AbstractRestHandler
      * {@inheritDoc}
      * @see \LosMiddleware\ApiServer\Handler\AbstractRestHandler::fetchAll()
      */
-    public function fetchAll(array $where = []): Collection
+    public function fetchAll(array $where = [], array $options = []): Collection
     {
-        $query = $this->request->getQueryParams();
+        $queryParams = $this->request->getQueryParams();
+        $query = array_key_exists('q', $queryParams) ? json_decode($queryParams['q'], true) : [];
+        $hint = array_key_exists('h', $queryParams) ? json_decode($queryParams['h'], true) : [];
+
+        $where = array_merge($where, $query);
+        $hint = array_merge($options, $hint);
 
         /** @var Collection $collection */
-        $collection = $this->mapper->findBy($query, $query);
+        $collection = $this->mapper->findBy($where, $hint);
 
-        $page = (int) ($query['page'] ?? 1);
+        $page = (int) ($queryParams['page'] ?? $hint['page'] ?? 1);
 
         $collection->setItemCountPerPage(25);
         $collection->setCurrentPageNumber($page);
 
-        $fields = $query['fields'] ?? '';
+        $fields = $queryParams['fields'] ?? $hint['fields'] ?? '';
         if (! empty($fields)) {
             $this->mapper->setFields(explode(',', $fields));
         }
