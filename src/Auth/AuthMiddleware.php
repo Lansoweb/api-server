@@ -47,9 +47,8 @@ class AuthMiddleware implements MiddlewareInterface
 
     /**
      * @param Request $request
-     * @return null|Response
      */
-    protected function validate(Request $request) : ?Response
+    protected function validate(Request $request) : void
     {
         if (! $request->hasHeader('authorization')) {
             throw AuthorizationException::create('Missing Authorization header');
