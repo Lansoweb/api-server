@@ -58,6 +58,7 @@ class ZendDbMapper implements MapperInterface
             $predicate->equalTo($key, $value);
         }
 
+        /** @var \Zend\Db\ResultSet\ResultSet $resultSet */
         $resultSet = $this->table->select($predicate);
         if (count($resultSet) == 0) {
             return null;
@@ -107,7 +108,10 @@ class ZendDbMapper implements MapperInterface
     public function update(array $data, EntityInterface $entity) : bool
     {
         $data = $entity->prepareDataForStorage($data);
-        return $this->table->update($data, [self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]) > 0;
+        return $this->table->update(
+            $data,
+            [self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]
+        ) > 0;
     }
 
     /**
