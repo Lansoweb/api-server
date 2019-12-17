@@ -14,7 +14,10 @@ class AuthFactory
      */
     public function __invoke(ContainerInterface $container)
     {
-        $users = $container->get('config')['los']['api_server']['auth']['clients'] ?? [];
-        return new AuthMiddleware($users, $container->get(ProblemDetailsResponseFactory::class));
+        $config = $container->get('config')['los']['api_server']['auth'] ?? [];
+        $users = $config['clients'] ?? [];
+        $allowedPaths = $config['allowedPaths'] ?? [];
+
+        return new AuthMiddleware($users, $allowedPaths, $container->get(ProblemDetailsResponseFactory::class));
     }
 }

@@ -6,6 +6,7 @@ return [
                 'clients' => [
                     //'user' => 'hashed password',
                 ],
+                'allowedPaths' => [],
             ],
         ],
     ],

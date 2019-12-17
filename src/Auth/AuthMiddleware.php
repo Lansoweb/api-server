@@ -15,6 +15,8 @@ class AuthMiddleware implements MiddlewareInterface
 {
     /** @var array */
     private $users = [];
+    /** @var array */
+    private $allowedPaths = [];
     /** @var ProblemDetailsResponseFactory */
     private $problemDetailsResponseFactory;
 
@@ -23,9 +25,10 @@ class AuthMiddleware implements MiddlewareInterface
      * @param array $users
      * @param ProblemDetailsResponseFactory $problemDetailsResponseFactory
      */
-    public function __construct(array $users, ProblemDetailsResponseFactory $problemDetailsResponseFactory)
+    public function __construct(array $users, array $allowedPaths, ProblemDetailsResponseFactory $problemDetailsResponseFactory)
     {
         $this->users = $users;
+        $this->allowedPaths = $allowedPaths;
         $this->problemDetailsResponseFactory = $problemDetailsResponseFactory;
     }
 
@@ -50,6 +53,10 @@ class AuthMiddleware implements MiddlewareInterface
      */
     protected function validate(Request $request) : void
     {
+        if (in_array($request->getUri()->getPath(), $this->allowedPaths)) {
+            return;
+        }
+
         if (! $request->hasHeader('authorization')) {
             throw AuthorizationException::create('Missing Authorization header');
         }
