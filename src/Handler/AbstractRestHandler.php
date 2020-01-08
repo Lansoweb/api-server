@@ -12,13 +12,13 @@ use LosMiddleware\ApiServer\Exception\ValidationException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface;
-use Zend\Diactoros\Response\EmptyResponse;
-use Zend\Expressive\Hal\HalResponseFactory;
-use Zend\Expressive\Hal\Metadata\RouteBasedCollectionMetadata;
-use Zend\Expressive\Hal\ResourceGenerator;
-use Zend\Expressive\Helper\UrlHelper;
-use Zend\InputFilter\InputFilterAwareInterface;
-use Zend\ProblemDetails\ProblemDetailsResponseFactory;
+use Laminas\Diactoros\Response\EmptyResponse;
+use Mezzio\Hal\HalResponseFactory;
+use Mezzio\Hal\Metadata\RouteBasedCollectionMetadata;
+use Mezzio\Hal\ResourceGenerator;
+use Mezzio\Helper\UrlHelper;
+use Laminas\InputFilter\InputFilterAwareInterface;
+use Mezzio\ProblemDetails\ProblemDetailsResponseFactory;
 
 abstract class AbstractRestHandler implements RequestHandlerInterface
 {

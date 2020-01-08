@@ -4,7 +4,7 @@ declare(strict_types = 1);
 namespace LosMiddleware\ApiServer\Auth;
 
 use Interop\Container\ContainerInterface;
-use Zend\ProblemDetails\ProblemDetailsResponseFactory;
+use Mezzio\ProblemDetails\ProblemDetailsResponseFactory;
 
 class AuthFactory
 {

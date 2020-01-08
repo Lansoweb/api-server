@@ -3,8 +3,8 @@ declare(strict_types = 1);
 
 namespace LosMiddleware\ApiServer\Exception;
 
-use Zend\ProblemDetails\Exception\CommonProblemDetailsExceptionTrait;
-use Zend\ProblemDetails\Exception\ProblemDetailsExceptionInterface;
+use Mezzio\ProblemDetails\Exception\CommonProblemDetailsExceptionTrait;
+use Mezzio\ProblemDetails\Exception\ProblemDetailsExceptionInterface;
 
 class ValidationException extends RuntimeException implements ProblemDetailsExceptionInterface
 {

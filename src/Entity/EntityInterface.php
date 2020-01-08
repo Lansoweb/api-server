@@ -1,8 +1,8 @@
 <?php
 namespace LosMiddleware\ApiServer\Entity;
 
-use Zend\InputFilter\InputFilterAwareInterface;
-use Zend\Stdlib\ArraySerializableInterface;
+use Laminas\InputFilter\InputFilterAwareInterface;
+use Laminas\Stdlib\ArraySerializableInterface;
 
 interface EntityInterface extends ArraySerializableInterface, InputFilterAwareInterface
 {

@@ -3,7 +3,7 @@ declare(strict_types = 1);
 
 namespace LosMiddleware\ApiServer\Entity;
 
-use Zend\Paginator\Paginator;
+use Laminas\Paginator\Paginator;
 
 class Collection extends Paginator
 {

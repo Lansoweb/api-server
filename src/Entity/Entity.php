@@ -3,9 +3,9 @@ declare(strict_types = 1);
 
 namespace LosMiddleware\ApiServer\Entity;
 
-use Zend\Filter\Word\CamelCaseToUnderscore;
-use Zend\Filter\Word\UnderscoreToStudlyCase;
-use Zend\InputFilter\InputFilterAwareTrait;
+use Laminas\Filter\Word\CamelCaseToUnderscore;
+use Laminas\Filter\Word\UnderscoreToStudlyCase;
+use Laminas\InputFilter\InputFilterAwareTrait;
 
 class Entity implements EntityInterface
 {
@@ -18,7 +18,7 @@ class Entity implements EntityInterface
     /**
      * Exchange internal values from provided array.
      * Call a setter. If not available, try the property.
-     * @see \Zend\Stdlib\ArraySerializableInterface::exchangeArray()
+     * @see \Laminas\Stdlib\ArraySerializableInterface::exchangeArray()
      * @param array $data
      */
     public function exchangeArray(array $data)
@@ -38,7 +38,7 @@ class Entity implements EntityInterface
 
     /**
      * Return an array representation of the object
-     * @see \Zend\Stdlib\ArraySerializableInterface::getArrayCopy()
+     * @see \Laminas\Stdlib\ArraySerializableInterface::getArrayCopy()
      */
     public function getArrayCopy() : array
     {

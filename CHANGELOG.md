@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file, in reverse chronological order by release.
 
+## 3.4.0 - 2020-01-08
+
+### Added
+
+- Nothing.
+
+### Changed
+
+- migrate packages from zendframework to laminas
+
+### Deprecated
+
+- Nothing.
+
+### Removed
+
+- Nothing.
+
+### Fixed
+
+- Nothing.
+
 ## 3.3.0 - 2019-12-17
 
 ### Added

@@ -6,10 +6,10 @@ namespace LosMiddleware\ApiServer\Mapper;
 use Los\Uql\ZendDbBuilder;
 use LosMiddleware\ApiServer\Entity\Collection;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
-use Zend\Db\ResultSet\HydratingResultSet;
-use Zend\Db\Sql\Where;
-use Zend\Db\TableGateway\TableGateway;
-use Zend\Paginator\Adapter\DbSelect;
+use Laminas\Db\ResultSet\HydratingResultSet;
+use Laminas\Db\Sql\Where;
+use Laminas\Db\TableGateway\TableGateway;
+use Laminas\Paginator\Adapter\DbSelect;
 
 class ZendDbMapper implements MapperInterface
 {
@@ -58,7 +58,7 @@ class ZendDbMapper implements MapperInterface
             $predicate->equalTo($key, $value);
         }
 
-        /** @var \Zend\Db\ResultSet\ResultSet $resultSet */
+        /** @var \Laminas\Db\ResultSet\ResultSet $resultSet */
         $resultSet = $this->table->select($predicate);
         if (count($resultSet) == 0) {
             return null;

@@ -8,10 +8,10 @@ use LosMiddleware\ApiServer\Entity\Entity;
 use LosMiddleware\ApiServer\Entity\EntityInterface;
 use LosMiddleware\ApiServer\Exception\NotFoundException;
 use LosMiddleware\ApiServer\Mapper\MapperInterface;
-use Zend\Expressive\Hal\HalResponseFactory;
-use Zend\Expressive\Hal\ResourceGenerator;
-use Zend\Expressive\Helper\UrlHelper;
-use Zend\ProblemDetails\ProblemDetailsResponseFactory;
+use Mezzio\Hal\HalResponseFactory;
+use Mezzio\Hal\ResourceGenerator;
+use Mezzio\Helper\UrlHelper;
+use Mezzio\ProblemDetails\ProblemDetailsResponseFactory;
 
 abstract class MapperRestHandler extends AbstractRestHandler
 {
