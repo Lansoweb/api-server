@@ -13,8 +13,7 @@
         "mezzio/mezzio-helpers": "^5.0",
         "mezzio/mezzio-problem-details": "^1.0",
         "laminas/laminas-diactoros": "^1.7 || ^2.2",
-        "los/uql": "^0.5",
-        "laminas/laminas-dependency-plugin": "^0.2"
+        "los/uql": "^1.0"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^2.7",
