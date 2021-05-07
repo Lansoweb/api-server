@@ -13,14 +13,10 @@ use Laminas\Paginator\Adapter\DbSelect;
 
 class ZendDbMapper implements MapperInterface
 {
-    /** @var TableGateway */
-    protected $table;
-    /** @var string */
-    private $collectionClass;
-    /** @var int */
-    protected $limitItemsPerPage = 25;
-    /** @var int */
-    protected $itemCountPerPage = 25;
+    protected TableGateway $table;
+    private string $collectionClass;
+    protected int $limitItemsPerPage = 25;
+    protected int $itemCountPerPage = 25;
 
     const IDENTIFIER_NAME = 'id';
     const SORT_BY = 'name';

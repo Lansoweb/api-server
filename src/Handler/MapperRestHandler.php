@@ -17,11 +17,8 @@ abstract class MapperRestHandler extends AbstractRestHandler
 {
     const SORT_BY = self::IDENTIFIER_NAME;
 
-    /** @var MapperInterface */
-    protected $mapper;
-
-    /** @var int */
-    protected $limitItemsPerPage = 25;
+    protected MapperInterface $mapper;
+    protected int $limitItemsPerPage = 25;
 
     public function __construct(
         MapperInterface $mapper,
@@ -96,7 +93,6 @@ abstract class MapperRestHandler extends AbstractRestHandler
         $where = array_merge($where, $query);
         $hint = array_merge($options, $hint);
 
-        /** @var Collection $collection */
         $collection = $this->mapper->findBy($where, $hint);
 
         $page = (int) ($queryParams['page'] ?? $hint['page'] ?? 1);

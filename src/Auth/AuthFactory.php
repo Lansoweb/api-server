@@ -6,6 +6,9 @@ namespace LosMiddleware\ApiServer\Auth;
 use Interop\Container\ContainerInterface;
 use Mezzio\ProblemDetails\ProblemDetailsResponseFactory;
 
+/**
+ * @deprecated Use los/api-auth
+ */
 class AuthFactory
 {
     /**

@@ -13,7 +13,7 @@ class Entity implements EntityInterface
 
     const IDENTIFIER_NAME = 'id';
 
-    protected $fields = [];
+    protected array $fields = [];
 
     /**
      * Exchange internal values from provided array.
