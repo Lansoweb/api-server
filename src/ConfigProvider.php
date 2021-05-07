@@ -7,20 +7,14 @@ use LosMiddleware\ApiServer\Auth;
 
 class ConfigProvider
 {
-    /**
-     * @return array
-     */
-    public function __invoke()
+    public function __invoke(): array
     {
         return [
             'dependencies' => $this->getDependencies(),
         ];
     }
 
-    /**
-     * @return array
-     */
-    public function getDependencies()
+    public function getDependencies(): array
     {
         return [
             'factories' => [

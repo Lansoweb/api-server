@@ -24,20 +24,13 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 {
     const IDENTIFIER_NAME = 'id';
 
-    /** @var Entity */
-    protected $entityPrototype;
-    /** @var Request */
-    protected $request;
-    /** @var UrlHelper */
-    protected $urlHelper;
-    /** @var int  */
-    protected $itemCountPerPage = 25;
-    /** @var ProblemDetailsResponseFactory */
-    protected $problemDetailsResponseFactory;
-    /** @var ResourceGenerator */
-    private $resourceGenerator;
-    /** @var HalResponseFactory  */
-    private $responseFactory;
+    protected Entity $entityPrototype;
+    protected Request $request;
+    protected UrlHelper $urlHelper;
+    protected int $itemCountPerPage = 25;
+    protected ProblemDetailsResponseFactory $problemDetailsResponseFactory;
+    private ResourceGenerator $resourceGenerator;
+    private HalResponseFactory $responseFactory;
 
     /**
      * AbstractRestAction constructor.
@@ -160,13 +153,8 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Generates a proper response based on the Entity ot Collection
-     *
-     * @param EntityInterface|Collection $entity
-     * @param int $code
-     * @throws \InvalidArgumentException
-     * @return Response
      */
-    protected function generateResponse($entity, $code = 200) : Response
+    protected function generateResponse($entity, int $code = 200) : Response
     {
         if ($entity instanceof Entity) {
             $resource = $this->resourceGenerator->fromObject($entity, $this->request);
@@ -351,10 +339,6 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
         throw MethodNotAllowedException::create();
     }
 
-    /**
-     * @param array $data
-     * @return Collection
-     */
     public function updateList(array $data) : Collection
     {
         throw MethodNotAllowedException::create();
@@ -374,12 +358,12 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
         throw MethodNotAllowedException::create();
     }
 
-    public function head()
+    public function head(): Response
     {
         throw MethodNotAllowedException::create();
     }
 
-    public function options()
+    public function options(): Response
     {
         throw MethodNotAllowedException::create();
     }
@@ -395,10 +379,6 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
         throw MethodNotAllowedException::create();
     }
 
-    /**
-     * @param array $data
-     * @return Collection
-     */
     public function patchList(array $data) : Collection
     {
         throw MethodNotAllowedException::create();

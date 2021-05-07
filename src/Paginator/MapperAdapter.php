@@ -8,8 +8,8 @@ use Laminas\Paginator\Adapter\AdapterInterface;
 
 class MapperAdapter implements AdapterInterface
 {
-    private $mapper;
-    private $where;
+    private MapperInterface $mapper;
+    private array $where;
     private $order;
     private $group;
 
