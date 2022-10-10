@@ -128,7 +128,7 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
             $data = [];
         }
 
-        if ($this->entityPrototype == null || ! ($this->entityPrototype instanceof InputFilterAwareInterface)) {
+        if (! isset($this->entityPrototype) || ! ($this->entityPrototype instanceof InputFilterAwareInterface)) {
             return $data;
         }
 

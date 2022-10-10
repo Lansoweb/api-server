@@ -55,5 +55,10 @@
         "zf": {
             "config-provider": "LosMiddleware\\ApiServer\\ConfigProvider"
         }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     }
 }
