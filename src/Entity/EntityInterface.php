@@ -1,5 +1,8 @@
 <?php
-namespace LosMiddleware\ApiServer\Entity;
+
+declare(strict_types=1);
+
+namespace Los\ApiServer\Entity;
 
 use Laminas\InputFilter\InputFilterAwareInterface;
 use Laminas\Stdlib\ArraySerializableInterface;
@@ -12,18 +15,18 @@ interface EntityInterface extends ArraySerializableInterface, InputFilterAwareIn
      * Can be used to encode arrays, for example.
      *
      * @param array $data
+     *
      * @return array
      */
-    public function prepareDataForStorage(array $data = []) : array;
+    public function prepareDataForStorage(array $data = []): array;
 
-    /**
-     * @param array $fields
-     */
-    public function setFields(array $fields) : void;
+    /** @param array $fields */
+    public function setFields(array $fields): void;
 
     /**
      * @param array $data
+     *
      * @return array
      */
-    public function filterData(array $data) : array;
+    public function filterData(array $data): array;
 }

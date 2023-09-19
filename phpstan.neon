@@ -1,3 +1,0 @@
-parameters:
-    ignoreErrors:
-        - '#Method LosMiddleware\\ApiServer\\Mapper\\ZendDbMapper::findOneBy\(\) should return LosMiddleware\\ApiServer\\Entity\\EntityInterface|null but returns array|ArrayObject|null.#'

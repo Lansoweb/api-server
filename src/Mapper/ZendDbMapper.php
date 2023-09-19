@@ -1,42 +1,35 @@
 <?php
-declare(strict_types = 1);
 
-namespace LosMiddleware\ApiServer\Mapper;
+declare(strict_types=1);
 
-use Los\Uql\ZendDbBuilder;
-use LosMiddleware\ApiServer\Entity\Collection;
-use LosMiddleware\ApiServer\Entity\EntityInterface;
+namespace Los\ApiServer\Mapper;
+
 use Laminas\Db\ResultSet\HydratingResultSet;
+use Laminas\Db\ResultSet\ResultSet;
 use Laminas\Db\Sql\Where;
 use Laminas\Db\TableGateway\TableGateway;
 use Laminas\Paginator\Adapter\DbSelect;
+use Los\ApiServer\Entity\Collection;
+use Los\ApiServer\Entity\EntityInterface;
+use Los\Uql\ZendDbBuilder;
+
+use function assert;
+use function count;
+use function explode;
 
 class ZendDbMapper implements MapperInterface
 {
-    protected TableGateway $table;
-    private string $collectionClass;
     protected int $limitItemsPerPage = 25;
-    protected int $itemCountPerPage = 25;
+    protected int $itemCountPerPage  = 25;
 
-    const IDENTIFIER_NAME = 'id';
-    const SORT_BY = 'name';
+    public const IDENTIFIER_NAME = 'id';
+    public const SORT_BY         = 'name';
 
-    /**
-     * ZendDbMapper constructor.
-     * @param TableGateway $table
-     * @param string $collectionClass
-     */
-    public function __construct(TableGateway $table, string $collectionClass)
+    public function __construct(protected TableGateway $table, private string $collectionClass)
     {
-        $this->table = $table;
-        $this->collectionClass = $collectionClass;
     }
 
-    /**
-     * @param mixed $id
-     * @return EntityInterface|null
-     */
-    public function findById($id): ?EntityInterface
+    public function findById(mixed $id): EntityInterface|null
     {
         return $this->findOneBy(['id' => $id]);
     }
@@ -44,9 +37,8 @@ class ZendDbMapper implements MapperInterface
     /**
      * @param array $where
      * @param array $options
-     * @return EntityInterface|null
      */
-    public function findOneBy(array $where = [], array $options = []): ?EntityInterface
+    public function findOneBy(array $where = [], array $options = []): EntityInterface|null
     {
         $predicate = new Where();
 
@@ -54,14 +46,14 @@ class ZendDbMapper implements MapperInterface
             $predicate->equalTo($key, $value);
         }
 
-        /** @var \Laminas\Db\ResultSet\ResultSet $resultSet */
         $resultSet = $this->table->select($predicate);
-        if (count($resultSet) == 0) {
+        assert($resultSet instanceof ResultSet);
+        if (count($resultSet) === 0) {
             return null;
         }
 
-        /* @var EntityInterface $entity */
         $entity = $resultSet->current();
+        assert($entity instanceof EntityInterface);
         $fields = (string) ($options['fields'] ?? '');
         if (! empty($fields)) {
             $entity->setFields(explode(',', $fields));
@@ -70,10 +62,7 @@ class ZendDbMapper implements MapperInterface
         return $entity;
     }
 
-    /**
-     * @param array $where
-     * @return int
-     */
+    /** @param array $where */
     public function count(array $where = []): int
     {
         $predicate = new Where();
@@ -83,38 +72,29 @@ class ZendDbMapper implements MapperInterface
         }
 
         $resultSet = $this->table->select($predicate);
+
         return $resultSet->count();
     }
 
-    /**
-     * @param EntityInterface $entity
-     * @return bool
-     */
-    public function insert(EntityInterface $entity) : bool
+    public function insert(EntityInterface $entity): bool
     {
         $data = $entity->prepareDataForStorage();
+
         return $this->table->insert($data) > 0;
     }
 
-    /**
-     * @param array $data
-     * @param EntityInterface $entity
-     * @return bool
-     */
-    public function update(array $data, EntityInterface $entity) : bool
+    /** @param array $data */
+    public function update(array $data, EntityInterface $entity): bool
     {
         $data = $entity->prepareDataForStorage($data);
+
         return $this->table->update(
             $data,
-            [self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]
+            [self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]],
         ) > 0;
     }
 
-    /**
-     * @param EntityInterface $entity
-     * @return bool
-     */
-    public function delete(EntityInterface $entity) : bool
+    public function delete(EntityInterface $entity): bool
     {
         return $this->table->delete([self::IDENTIFIER_NAME => $entity->getArrayCopy()[self::IDENTIFIER_NAME]]) > 0;
     }
@@ -122,9 +102,8 @@ class ZendDbMapper implements MapperInterface
     /**
      * @param array $where
      * @param array $options
-     * @return Collection
      */
-    public function findBy(array $where = [], array $options = []) : Collection
+    public function findBy(array $where = [], array $options = []): Collection
     {
         $sql    = $this->table->getSql();
         $select = $sql->select();
@@ -133,24 +112,22 @@ class ZendDbMapper implements MapperInterface
         $dbAdapter = new DbSelect(
             $select,
             $sql,
-            $this->table->getResultSetPrototype()
+            $this->table->getResultSetPrototype(),
         );
 
-        /** @var Collection $collection */
         $collection = new $this->collectionClass($dbAdapter);
+        assert($collection instanceof Collection);
 
         return $collection;
     }
 
-    /**
-     * @param array $fields
-     */
+    /** @param array $fields */
     public function setFields(array $fields): void
     {
-        /** @var HydratingResultSet $resultSetPrototype */
         $resultSetPrototype = $this->table->getResultSetPrototype();
-        /** @var EntityInterface $entityPrototype */
+        assert($resultSetPrototype instanceof HydratingResultSet);
         $entityPrototype = $resultSetPrototype->getObjectPrototype();
+        assert($entityPrototype instanceof EntityInterface);
         $entityPrototype->setFields($fields);
     }
 }
