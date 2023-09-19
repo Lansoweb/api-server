@@ -2,3 +2,4 @@
 .~lock.*
 vendor
 /composer.lock
+/build

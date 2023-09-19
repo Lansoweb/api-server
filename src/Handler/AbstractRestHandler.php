@@ -1,72 +1,64 @@
 <?php
-declare(strict_types = 1);
 
-namespace LosMiddleware\ApiServer\Handler;
+declare(strict_types=1);
 
-use LosMiddleware\ApiServer\Entity\Collection;
-use LosMiddleware\ApiServer\Entity\Entity;
-use LosMiddleware\ApiServer\Entity\EntityInterface;
-use LosMiddleware\ApiServer\Exception\MethodNotAllowedException;
-use LosMiddleware\ApiServer\Exception\RuntimeException;
-use LosMiddleware\ApiServer\Exception\ValidationException;
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Psr\Http\Server\RequestHandlerInterface;
+namespace Los\ApiServer\Handler;
+
 use Laminas\Diactoros\Response\EmptyResponse;
+use Laminas\InputFilter\InputFilterAwareInterface;
+use Los\ApiServer\Entity\Collection;
+use Los\ApiServer\Entity\Entity;
+use Los\ApiServer\Entity\EntityInterface;
+use Los\ApiServer\Exception\MethodNotAllowedException;
+use Los\ApiServer\Exception\RuntimeException;
+use Los\ApiServer\Exception\ValidationException;
 use Mezzio\Hal\HalResponseFactory;
 use Mezzio\Hal\Metadata\RouteBasedCollectionMetadata;
 use Mezzio\Hal\ResourceGenerator;
 use Mezzio\Helper\UrlHelper;
-use Laminas\InputFilter\InputFilterAwareInterface;
 use Mezzio\ProblemDetails\ProblemDetailsResponseFactory;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface;
+
+use function array_key_exists;
+use function array_keys;
+use function array_merge;
+use function assert;
+use function end;
+use function explode;
+use function is_array;
+use function str_replace;
+use function strtolower;
+use function strtoupper;
 
 abstract class AbstractRestHandler implements RequestHandlerInterface
 {
-    const IDENTIFIER_NAME = 'id';
+    public const IDENTIFIER_NAME = 'id';
 
     protected Entity $entityPrototype;
     protected Request $request;
-    protected UrlHelper $urlHelper;
     protected int $itemCountPerPage = 25;
-    protected ProblemDetailsResponseFactory $problemDetailsResponseFactory;
-    private ResourceGenerator $resourceGenerator;
-    private HalResponseFactory $responseFactory;
 
-    /**
-     * AbstractRestAction constructor.
-     * @param UrlHelper $urlHelper
-     * @param ProblemDetailsResponseFactory $problemDetailsResponseFactory
-     * @param ResourceGenerator $resourceGenerator
-     * @param HalResponseFactory $responseFactory
-     */
     public function __construct(
-        UrlHelper $urlHelper,
-        ProblemDetailsResponseFactory $problemDetailsResponseFactory,
-        ResourceGenerator $resourceGenerator,
-        HalResponseFactory $responseFactory
+        protected UrlHelper $urlHelper,
+        protected ProblemDetailsResponseFactory $problemDetailsResponseFactory,
+        private ResourceGenerator $resourceGenerator,
+        private HalResponseFactory $responseFactory,
     ) {
-        $this->urlHelper = $urlHelper;
-        $this->problemDetailsResponseFactory = $problemDetailsResponseFactory;
-        $this->resourceGenerator = $resourceGenerator;
-        $this->responseFactory = $responseFactory;
     }
 
     /**
      * Method to return the resource name for collections generation
-     *
-     * @return string
      */
-    public function getResourceName() : string
+    public function getResourceName(): string
     {
-        $tokens = explode('\\', get_class($this));
+        $tokens    = explode('\\', static::class);
         $className = end($tokens);
+
         return strtolower(str_replace('Handler', '', $className));
     }
 
-    /**
-     * @param Request $request
-     * @return Response
-     */
     public function handle(Request $request): Response
     {
         $requestMethod = strtoupper($request->getMethod());
@@ -79,36 +71,44 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
         }
     }
 
-    protected function handleMethods(string $requestMethod) : Response
+    protected function handleMethods(string $requestMethod): Response
     {
-        $id = $this->request->getAttribute(static::IDENTIFIER_NAME);
+        $id = $this->request->getAttribute(self::IDENTIFIER_NAME);
 
         switch ($requestMethod) {
             case 'GET':
                 return isset($id)
                     ? $this->handleFetch($id)
                     : $this->handleFetchAll();
+
             case 'POST':
                 if (isset($id)) {
                     throw MethodNotAllowedException::create('Method Not Allowed for Entity');
                 }
+
                 return $this->handlePost();
+
             case 'PUT':
                 return isset($id)
                     ? $this->handleUpdate($id)
                     : $this->handleUpdateList();
+
             case 'PATCH':
                 return isset($id)
                     ? $this->handlePatch($id)
                     : $this->handlePatchList();
+
             case 'DELETE':
                 return isset($id)
                     ? $this->handleDelete($id)
                     : $this->handleDeleteList();
+
             case 'HEAD':
                 return $this->head();
+
             case 'OPTIONS':
                 return $this->options();
+
             default:
                 throw MethodNotAllowedException::create();
         }
@@ -117,10 +117,11 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * Call the inputfilter to filter and validate data
      *
-     * @throws ValidationException
      * @return array
+     *
+     * @throws ValidationException
      */
-    protected function validateBody() : array
+    protected function validateBody(): array
     {
         $data = $this->request->getParsedBody();
 
@@ -128,11 +129,11 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
             $data = [];
         }
 
-        if ($this->entityPrototype == null || ! ($this->entityPrototype instanceof InputFilterAwareInterface)) {
+        if (! isset($this->entityPrototype) || ! ($this->entityPrototype instanceof InputFilterAwareInterface)) {
             return $data;
         }
 
-        if (strtoupper($this->request->getMethod()) == 'PATCH') {
+        if (strtoupper($this->request->getMethod()) === 'PATCH') {
             $this->entityPrototype->getInputFilter()->setValidationGroup(array_keys($data));
         }
 
@@ -144,32 +145,37 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
         $parsed = [];
         foreach ($values as $key => $value) {
-            if (array_key_exists($key, $data)) {
-                $parsed[$key] = $value;
+            if (! array_key_exists($key, $data)) {
+                continue;
             }
+
+            $parsed[$key] = $value;
         }
+
         return $parsed;
     }
 
     /**
      * Generates a proper response based on the Entity ot Collection
      */
-    protected function generateResponse($entity, int $code = 200) : Response
+    protected function generateResponse($entity, int $code = 200): Response
     {
         if ($entity instanceof Entity) {
             $resource = $this->resourceGenerator->fromObject($entity, $this->request);
+
             return $this->responseFactory->createResponse($this->request, $resource);
         }
 
         $queryParams = $this->request->getQueryParams();
 
         $metadataMap = $this->resourceGenerator->getMetadataMap();
-        /** @var RouteBasedCollectionMetadata $metadata */
-        $metadata = $metadataMap->get(get_class($entity));
+        $metadata    = $metadataMap->get($entity::class);
+        assert($metadata instanceof RouteBasedCollectionMetadata);
         $metadataQuery = $origMetadataQuery = $metadata->getQueryStringArguments();
         foreach ($queryParams as $key => $value) {
             $metadataQuery = array_merge($metadataQuery, [$key => $value]);
         }
+
         $metadata->setQueryStringArguments($metadataQuery);
 
         $resource = $this->resourceGenerator->fromObject($entity, $this->request);
@@ -188,35 +194,30 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Fetch an Entity
-     *
-     * @param mixed $id
-     * @return Response
      */
-    protected function handleFetch($id) : Response
+    protected function handleFetch(mixed $id): Response
     {
         $entity = $this->fetch($id);
+
         return $this->generateResponse($entity);
     }
 
     /**
      * Fetch a collection
-     *
-     * @return Response
      */
-    protected function handleFetchAll() : Response
+    protected function handleFetchAll(): Response
     {
         $list = $this->fetchAll();
+
         return $this->generateResponse($list);
     }
 
     /**
      * Create a new Entity
-     *
-     * @return Response
      */
-    protected function handlePost() : Response
+    protected function handlePost(): Response
     {
-        $data = $this->validateBody();
+        $data   = $this->validateBody();
         $entity = $this->create($data);
 
         return $this->generateResponse($entity, 201);
@@ -224,13 +225,10 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Update an Entity
-     *
-     * @param mixed $id
-     * @return Response
      */
-    protected function handleUpdate($id) : Response
+    protected function handleUpdate(mixed $id): Response
     {
-        $data = $this->validateBody();
+        $data   = $this->validateBody();
         $entity = $this->update($id, $data);
 
         return $this->generateResponse($entity);
@@ -238,10 +236,8 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Update a collection
-     *
-     * @return Response
      */
-    protected function handleUpdateList() : Response
+    protected function handleUpdateList(): Response
     {
         $data = $this->validateBody();
         $list = $this->updateList($data);
@@ -251,13 +247,10 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Update some properties from an Entity
-     *
-     * @param mixed $id
-     * @return Response
      */
-    protected function handlePatch($id) : Response
+    protected function handlePatch(mixed $id): Response
     {
-        $data = $this->validateBody();
+        $data   = $this->validateBody();
         $entity = $this->patch($id, $data);
 
         return $this->generateResponse($entity);
@@ -265,10 +258,8 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
 
     /**
      * Updates some properties from a Collection
-     *
-     * @return Response
      */
-    protected function handlePatchList() : Response
+    protected function handlePatchList(): Response
     {
         $data = $this->validateBody();
         $list = $this->patchList($data);
@@ -279,12 +270,12 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * Delete an Entity
      *
-     * @param mixed $id
      * @return EmptyResponse
      */
-    protected function handleDelete($id) : Response
+    protected function handleDelete(mixed $id): Response
     {
         $this->delete($id);
+
         return new EmptyResponse(204);
     }
 
@@ -293,18 +284,15 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
      *
      * @return EmptyResponse
      */
-    protected function handleDeleteList() : Response
+    protected function handleDeleteList(): Response
     {
         $this->deleteList();
+
         return new EmptyResponse(204);
     }
 
-    /**
-     * @param mixed $id
-     * @param array $where
-     * @return EntityInterface
-     */
-    public function fetch($id, array $where = []): EntityInterface
+    /** @param array $where */
+    public function fetch(mixed $id, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
@@ -312,48 +300,39 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     /**
      * @param array $where
      * @param array $options
-     * @return Collection
      */
     public function fetchAll(array $where = [], array $options = []): Collection
     {
         throw MethodNotAllowedException::create();
     }
 
+    /** @param array $data */
+    public function create(array $data): EntityInterface
+    {
+        throw MethodNotAllowedException::create();
+    }
+
     /**
      * @param array $data
-     * @return EntityInterface
-     */
-    public function create(array $data) : EntityInterface
-    {
-        throw MethodNotAllowedException::create();
-    }
-
-    /**
-     * @param mixed $id
-     * @param array $data
-     * @param array $where
-     * @return EntityInterface
-     */
-    public function update($id, array $data, array $where = []): EntityInterface
-    {
-        throw MethodNotAllowedException::create();
-    }
-
-    public function updateList(array $data) : Collection
-    {
-        throw MethodNotAllowedException::create();
-    }
-
-    /**
-     * @param mixed $id
      * @param array $where
      */
-    public function delete($id, array $where = [])
+    public function update(mixed $id, array $data, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
 
-    public function deleteList()
+    public function updateList(array $data): Collection
+    {
+        throw MethodNotAllowedException::create();
+    }
+
+    /** @param array $where */
+    public function delete(mixed $id, array $where = []): void
+    {
+        throw MethodNotAllowedException::create();
+    }
+
+    public function deleteList(): void
     {
         throw MethodNotAllowedException::create();
     }
@@ -369,17 +348,15 @@ abstract class AbstractRestHandler implements RequestHandlerInterface
     }
 
     /**
-     * @param mixed $id
      * @param array $data
      * @param array $where
-     * @return EntityInterface
      */
-    public function patch($id, array $data, array $where = []): EntityInterface
+    public function patch(mixed $id, array $data, array $where = []): EntityInterface
     {
         throw MethodNotAllowedException::create();
     }
 
-    public function patchList(array $data) : Collection
+    public function patchList(array $data): Collection
     {
         throw MethodNotAllowedException::create();
     }

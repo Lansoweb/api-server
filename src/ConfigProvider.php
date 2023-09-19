@@ -1,9 +1,8 @@
 <?php
-declare(strict_types = 1);
 
-namespace LosMiddleware\ApiServer;
+declare(strict_types=1);
 
-use LosMiddleware\ApiServer\Auth;
+namespace Los\ApiServer;
 
 class ConfigProvider
 {
@@ -17,9 +16,7 @@ class ConfigProvider
     public function getDependencies(): array
     {
         return [
-            'factories' => [
-                Auth\AuthMiddleware::class => Auth\AuthFactory::class,
-            ],
+            'factories' => [],
         ];
     }
 }
