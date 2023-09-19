@@ -2,27 +2,22 @@
 
 All notable changes to this project will be documented in this file, in reverse chronological order by release.
 
-## 3.6.0 - TBD
+## 3.6.0 - 2023-09-19
 
-### Added
 
-- Nothing.
+-----
 
-### Changed
+### Release Notes for [3.6.0](https://github.com/Lansoweb/api-server/milestone/3)
 
-- Nothing.
+Feature release (minor)
 
-### Deprecated
+### 3.6.0
 
-- Nothing.
+- Total issues resolved: **0**
+- Total pull requests resolved: **1**
+- Total contributors: **1**
 
-### Removed
-
-- Nothing.
-
-### Fixed
-
-- Nothing.
+ - [4: remove php 7.4 and update dependencies](https://github.com/Lansoweb/api-server/pull/4) thanks to @Lansoweb
 
 ## 3.5.2 - TBD
 
